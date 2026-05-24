@@ -1,0 +1,11 @@
+# Virtual Environment
+venv/
+__pycache__/
+
+# Secrets and Credentials
+.env
+credentials.json
+
+# Unused files
+app_NotInUse.py
+static/index_NotInUse.html
