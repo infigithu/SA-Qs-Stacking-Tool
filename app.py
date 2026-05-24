@@ -593,4 +593,7 @@ def send():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Get the port from Railway, default to 5000 for local testing
+    port = int(os.environ.get('PORT', 5000))
+    # host='0.0.0.0' tells the app to listen to the outside internet
+    app.run(host='0.0.0.0', port=port, debug=False)
