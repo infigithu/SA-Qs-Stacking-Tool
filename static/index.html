@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JEE Question Builder</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<style>
+/* Your Original Custom CSS */
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif}
+body{background:#f5f5f3;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #e5e5e5;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{font-size:16px;font-weight:600;color:#111}
+.topbar-right{display:flex;gap:8px;align-items:center}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid #d5d5d5;background:#fff;font-size:13px;cursor:pointer;font-weight:500;color:#111;transition:all 0.15s}
+.btn:hover{background:#f5f5f5}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-primary{background:#111;color:#fff;border-color:#111}
+.btn-primary:hover{background:#333}
+.btn-green{background:#0F6E56;color:#fff;border-color:#0F6E56}
+.btn-green:hover{background:#0a5a44}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-amber{background:#854F0B;color:#fff;border-color:#854F0B;font-size:12px;padding:5px 10px}
+.btn-blue{background:#185FA5;color:#fff;border-color:#185FA5;font-size:12px;padding:5px 10px}
+.workspace{padding:24px;max-width:1400px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+.box{background:#fff;border:1.5px dashed #d5d5d5;border-radius:12px;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;position:relative;padding:12px}
+.box:hover{border-color:#aaa}
+.box.has-images{border-style:solid;border-color:#1D9E75;cursor:default;align-items:flex-start;justify-content:flex-start}
+.box.generated{border-color:#185FA5}
+.box.verified{border-color:#1D9E75;background:#f0faf6}
+.box.drag-over{border-color:#185FA5;background:#f0f6ff}
+.box-empty-icon{font-size:28px;color:#ccc;margin-bottom:8px}
+.box-empty-text{font-size:12px;color:#aaa}
+.box-num{font-size:11px;font-weight:600;color:#888;margin-bottom:6px}
+.thumb-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.thumb{width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid #e5e5e5}
+.box-status{font-size:11px;color:#888;margin-bottom:6px}
+.solution-toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:#555;margin-bottom:8px}
+.toggle-switch{position:relative;width:32px;height:18px}
+.toggle-switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:9px;transition:0.2s}
+.slider:before{position:absolute;content:"";height:12px;width:12px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.2s}
+input:checked+.slider{background:#1D9E75}
+input:checked+.slider:before{transform:translateX(14px)}
+.box-actions{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.remove-btn{position:absolute;top:6px;right:6px;background:none;border:none;color:#ccc;cursor:pointer;font-size:16px;line-height:1;padding:2px}
+.remove-btn:hover{color:#e24b4b}
+.add-box-row{display:flex;justify-content:flex-end;margin-bottom:24px}
+.result-section{margin-top:24px}
+.result-card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:20px;margin-bottom:16px}
+.result-card.verified-card{border-color:#1D9E75}
+.result-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.result-title{font-size:14px;font-weight:600;color:#111}
+.status-badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
+.badge-generated{background:#e6f1fb;color:#185FA5}
+.badge-verified{background:#e1f5ee;color:#085041}
+.badge-error{background:#fcebeb;color:#791F1F}
+.latex-question{font-size:20px;line-height:1.8;background:#f9f9f7;border-radius:8px;padding:16px;margin-bottom:12px;color:#111}
+.latex-solution{font-size:17px;line-height:1.8;background:#f9f9f7;border-radius:8px;padding:16px;margin-bottom:12px;color:#111}
+.fields-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media(max-width:700px){.fields-grid{grid-template-columns:repeat(2,1fr)}}
+.field-item{background:#f5f5f3;border-radius:8px;padding:8px 10px}
+.field-label{font-size:10px;color:#999;margin-bottom:2px;text-transform:uppercase;letter-spacing:0.5px}
+.field-value{font-size:13px;color:#111;font-weight:500}
+.field-value.editable{cursor:pointer;border-bottom:1px dashed #ccc}
+.field-value.editable:hover{color:#185FA5}
+.result-actions{display:flex;gap:8px;flex-wrap:wrap}
+.fix-area{margin-top:12px;display:none}
+.fix-area input{width:100%;padding:8px 12px;border:1px solid #d5d5d5;border-radius:8px;font-size:13px;margin-bottom:8px}
+.verify-result{margin-top:10px;padding:10px 14px;border-radius:8px;font-size:13px}
+.verify-ok{background:#e1f5ee;color:#085041}
+.verify-fail{background:#fcebeb;color:#791F1F}
+.send-progress{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:20px;margin-bottom:24px;display:none}
+.progress-bar{height:6px;background:#e5e5e5;border-radius:3px;overflow:hidden;margin:12px 0}
+.progress-fill{height:100%;background:#1D9E75;border-radius:3px;transition:width 0.3s}
+.loading{display:inline-block;width:14px;height:14px;border:2px solid #ccc;border-top-color:#185FA5;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.drop-hint{position:absolute;bottom:8px;font-size:10px;color:#bbb}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">JEE Question Builder</div>
+  <div class="topbar-right">
+    <span id="box-count" style="font-size:12px;color:#888"></span>
+    <button class="btn" onclick="addBox()">+ Add Box</button>
+    <button class="btn btn-primary" onclick="generateAll()" id="generate-btn">Generate All</button>
+    <button class="btn btn-green" onclick="sendAll()" id="send-btn" disabled>Send to Sheets</button>
+  </div>
+</div>
+
+<div class="workspace">
+
+  <div class="mb-6 p-5 border border-gray-300 rounded-lg bg-white shadow-sm flex flex-col md:flex-row gap-4 items-end">
+    <div class="flex-1 w-full">
+        <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">Google Spreadsheet ID</label>
+        <div class="flex gap-2">
+            <input type="text" id="spreadsheet_id" placeholder="Paste ID here (e.g., 1BxiMVs0XRY...)" class="flex-1 p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" style="display:block;">
+            <button onclick="fetchSheets()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors">Fetch Sheets</button>
+        </div>
+    </div>
+    <div class="flex-1 w-full">
+        <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">Select Sub-Sheet</label>
+        <select id="sheet_selector" class="w-full p-2 border border-gray-300 rounded text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="">Fetch sheets first...</option>
+        </select>
+    </div>
+  </div>
+
+  <div class="send-progress" id="send-progress">
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px">Sending to Google Sheets & Telegram...</div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <div id="progress-text" style="font-size:13px;color:#888">0 / 0 sent</div>
+  </div>
+
+  <div class="grid" id="box-grid"></div>
+  <div class="add-box-row">
+    <button class="btn" onclick="addBox()">+ Add Box</button>
+  </div>
+  <div class="result-section" id="result-section"></div>
+</div>
+
+<script>
+let boxes = [];
+let results = {};
+let boxCounter = 0;
+
+// ==========================================
+// FEATURE 1: Fetch Google Sheets Logic
+// ==========================================
+async function fetchSheets() {
+    const sheetId = document.getElementById('spreadsheet_id').value.trim();
+    if (!sheetId) return alert('Please paste a Spreadsheet ID');
+    
+    const selector = document.getElementById('sheet_selector');
+    selector.innerHTML = '<option value="">Loading...</option>';
+    
+    try {
+        const res = await fetch(`/get_sheets?spreadsheet_id=${sheetId}`);
+        const data = await res.json();
+        
+        if (data.sheets) {
+            selector.innerHTML = '';
+            data.sheets.forEach(name => {
+                selector.innerHTML += `<option value="${name}">${name}</option>`;
+            });
+            selector.classList.remove('bg-gray-50');
+            selector.classList.add('bg-white');
+        } else {
+            selector.innerHTML = '<option value="">⚠ Error loading sheets</option>';
+            alert('Error fetching sheets: ' + data.error);
+        }
+    } catch (e) {
+        alert('Server error while fetching sheets.');
+    }
+}
+
+// ==========================================
+// FEATURE 2: Telegram Image Toggle Logic
+// ==========================================
+function toggleFigures(id) {
+    const container = document.getElementById(`figures-container-${id}`);
+    const checkbox = document.getElementById(`toggle-fig-${id}`);
+    if (checkbox.checked) {
+        container.classList.remove('hidden');
+    } else {
+        container.classList.add('hidden');
+    }
+}
+
+function toBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
+
+// ==========================================
+// ORIGINAL LOGIC (Modified to inject UI)
+// ==========================================
+function addBox() {
+  boxCounter++;
+  const id = boxCounter;
+  boxes.push({ id, images: [], solutionIncluded: true, verified: false });
+  renderBoxes();
+  updateCount();
+}
+
+function removeBox(id) {
+  boxes = boxes.filter(b => b.id !== id);
+  delete results[id];
+  renderBoxes();
+  renderResults();
+  updateCount();
+}
+
+function updateCount() {
+  const filled = boxes.filter(b => b.images.length > 0).length;
+  document.getElementById('box-count').textContent = filled > 0 ? `${filled} box${filled>1?'es':''} ready` : '';
+}
+
+function renderBoxes() {
+  const grid = document.getElementById('box-grid');
+  grid.innerHTML = '';
+  boxes.forEach(box => {
+    const div = document.createElement('div');
+    div.className = 'box' + (box.images.length > 0 ? ' has-images' : '') + (results[box.id] ? (box.verified ? ' verified' : ' generated') : '');
+    div.dataset.id = box.id;
+    div.addEventListener('dragover', e => { e.preventDefault(); div.classList.add('drag-over'); });
+    div.addEventListener('dragleave', () => div.classList.remove('drag-over'));
+    div.addEventListener('drop', e => { e.preventDefault(); div.classList.remove('drag-over'); handleDrop(box.id, e.dataTransfer.files); });
+
+    if (box.images.length === 0) {
+      div.innerHTML = `
+        <div class="box-empty-icon">📎</div>
+        <div class="box-empty-text">Drop images here</div>
+        <div class="drop-hint">or click to browse</div>
+      `;
+      div.onclick = () => browseFiles(box.id);
+    } else {
+      const thumbs = box.images.map(img => `<img class="thumb" src="${img.data}">`).join('');
+      div.innerHTML = `
+        <button class="remove-btn" onclick="removeBox(${box.id})">×</button>
+        <div class="box-num">Q${box.id}</div>
+        <div class="thumb-row">${thumbs}</div>
+        <div class="box-status">${box.images.length} image${box.images.length>1?'s':''}</div>
+        <label class="solution-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" ${box.solutionIncluded ? 'checked' : ''} onchange="toggleSolution(${box.id}, this.checked)">
+            <span class="slider"></span>
+          </label>
+          Solution included
+        </label>
+        <div style="font-size:10px;color:#aaa;margin-bottom:4px">Click to add more images</div>
+      `;
+      div.onclick = (e) => { if (!e.target.closest('button') && !e.target.closest('input') && !e.target.closest('label')) browseFiles(box.id); };
+    }
+    grid.appendChild(div);
+  });
+}
+
+function browseFiles(id) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+  input.accept = 'image/*';
+  input.onchange = e => handleFiles(id, e.target.files);
+  input.click();
+}
+
+function handleDrop(id, files) {
+  handleFiles(id, files);
+}
+
+function handleFiles(id, files) {
+  const box = boxes.find(b => b.id === id);
+  if (!box) return;
+  const remaining = 4 - box.images.length;
+  const toAdd = Array.from(files).slice(0, remaining);
+  let loaded = 0;
+  toAdd.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const data = e.target.result;
+      const b64 = data.split(',')[1];
+      box.images.push({ data, b64 });
+      loaded++;
+      if (loaded === toAdd.length) { renderBoxes(); updateCount(); }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function toggleSolution(id, checked) {
+  const box = boxes.find(b => b.id === id);
+  if (box) box.solutionIncluded = checked;
+}
+
+async function generateAll() {
+  const ready = boxes.filter(b => b.images.length > 0);
+  if (ready.length === 0) { alert('Add images to at least one box first!'); return; }
+
+  const btn = document.getElementById('generate-btn');
+  btn.innerHTML = '<span class="loading"></span>Generating...';
+  btn.disabled = true;
+
+  const promises = ready.map(box => generateBox(box));
+  await Promise.all(promises);
+
+  btn.innerHTML = 'Generate All';
+  btn.disabled = false;
+  renderResults();
+  renderBoxes();
+}
+
+async function generateBox(box) {
+  try {
+    const response = await fetch('/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ images: box.images.map(i => i.b64), solution_included: box.solutionIncluded })
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    results[box.id] = data;
+  } catch (e) {
+    results[box.id] = { error: e.message };
+  }
+}
+
+function renderResults() {
+  const section = document.getElementById('result-section');
+  section.innerHTML = '';
+  let anyVerified = false;
+
+  boxes.forEach(box => {
+    if (!results[box.id]) return;
+    const q = results[box.id];
+    const isVerified = box.verified;
+    if (isVerified) anyVerified = true;
+
+    const card = document.createElement('div');
+    card.className = 'result-card' + (isVerified ? ' verified-card' : '');
+    card.id = `result-${box.id}`;
+
+    if (q.error) {
+      card.innerHTML = `
+        <div class="result-header">
+          <span class="result-title">Q${box.id}</span>
+          <span class="status-badge badge-error">Error</span>
+        </div>
+        <div style="color:#791F1F;font-size:13px">${q.error}</div>
+        <div style="margin-top:8px"><button class="btn btn-sm" onclick="retryBox(${box.id})">Retry</button></div>
+      `;
+    } else {
+      const options = q.options || [];
+      const optionsHtml = options.length > 0 ? options.map(o => `
+        <div style="font-size:13px;padding:4px 0;color:${o.is_correct?'#085041':'#111'}">
+          ${o.is_correct ? '✓' : '○'} <strong>${o.label}.</strong> ${o.text}
+        </div>`).join('') : '<div style="font-size:13px;color:#888">Integer type — no options</div>';
+
+      // The new Telegram Image Upload block
+      const figureUI = `
+        <div class="mt-4 mb-4 p-4 border rounded-lg bg-gray-50 border-gray-200 shadow-sm">
+            <label class="flex items-center gap-2 cursor-pointer mb-1">
+                <input type="checkbox" id="toggle-fig-${box.id}" onchange="toggleFigures(${box.id})" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                <span class="font-bold text-sm text-gray-800">Does this question contain a Diagram/Figure?</span>
+            </label>
+            
+            <div id="figures-container-${box.id}" class="hidden mt-3 space-y-3 pt-3 border-t border-gray-200">
+                <div>
+                    <span class="text-xs font-bold text-gray-600 uppercase tracking-wider block mb-1">Question Figures</span>
+                    <input type="file" multiple accept="image/*" id="q-figures-${box.id}" class="block w-full text-sm border p-1 bg-white rounded cursor-pointer" style="display:block;">
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-gray-600 uppercase tracking-wider block mb-1">Solution Figures</span>
+                    <input type="file" multiple accept="image/*" id="s-figures-${box.id}" class="block w-full text-sm border p-1 bg-white rounded cursor-pointer" style="display:block;">
+                </div>
+                <p id="fig-error-${box.id}" class="hidden text-red-600 text-xs font-bold mt-1 bg-red-50 p-2 rounded border border-red-200">⚠ Please add figures or turn off the switch.</p>
+            </div>
+        </div>
+      `;
+
+      card.innerHTML = `
+        <div class="result-header">
+          <span class="result-title">Q${box.id} — ${q.title || ''}</span>
+          <span class="status-badge ${isVerified ? 'badge-verified' : 'badge-generated'}">${isVerified ? '✓ Verified' : 'Generated'}</span>
+        </div>
+
+        <div style="font-size:11px;color:#999;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Question</div>
+        <div class="latex-question" id="q-stmt-${box.id}">${q.statement || ''}</div>
+
+        <div style="font-size:11px;color:#999;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Solution</div>
+        <div class="latex-solution" id="q-sol-${box.id}">${q.solution || ''}</div>
+
+        <div style="font-size:11px;color:#999;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Options</div>
+        <div id="q-opts-${box.id}" style="margin-bottom:12px">${optionsHtml}</div>
+
+        ${figureUI}
+
+        <div class="fields-grid">
+          <div class="field-item"><div class="field-label">Chapter</div><div class="field-value">${q.chapter_title||''}</div></div>
+          <div class="field-item"><div class="field-label">Subject</div><div class="field-value">${q.subject||''}</div></div>
+          <div class="field-item"><div class="field-label">Type</div><div class="field-value">${q.type||''}</div></div>
+          <div class="field-item"><div class="field-label">Level</div><div class="field-value">${q.level||''}</div></div>
+          <div class="field-item"><div class="field-label">Max XP</div><div class="field-value">${q.max_xp||''}</div></div>
+          <div class="field-item"><div class="field-label">Correct Answer</div><div class="field-value">${q.correct_answer||'—'}</div></div>
+          <div class="field-item"><div class="field-label">Tags</div><div class="field-value">${q.tags||''}</div></div>
+          <div class="field-item"><div class="field-label">Hint</div><div class="field-value" style="font-size:11px">${q.hint||''}</div></div>
+        </div>
+
+        <div class="result-actions">
+          <button class="btn btn-amber" onclick="toggleFix(${box.id})">✏️ Fix</button>
+          <button class="btn btn-blue" onclick="verifyQuestion(${box.id})" id="verify-btn-${box.id}">✓ Verify</button>
+        </div>
+
+        <div class="fix-area" id="fix-area-${box.id}">
+          <input type="text" placeholder="Describe what to fix, e.g. 'make solution shorter' or 'fix the hint'" id="fix-input-${box.id}" style="display:block;">
+          <button class="btn btn-primary btn-sm" onclick="fixQuestion(${box.id})">Apply Fix</button>
+        </div>
+
+        <div id="verify-result-${box.id}"></div>
+      `;
+    }
+    section.appendChild(card);
+  });
+
+  document.getElementById('send-btn').disabled = !anyVerified;
+  renderMath();
+}
+
+function renderMath() {
+  document.querySelectorAll('.latex-question, .latex-solution').forEach(el => {
+    renderMathInElement(el, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });
+  });
+}
+
+function toggleFix(id) {
+  const area = document.getElementById(`fix-area-${id}`);
+  area.style.display = area.style.display === 'block' ? 'none' : 'block';
+  if (area.style.display === 'block') document.getElementById(`fix-input-${id}`).focus();
+}
+
+async function fixQuestion(id) {
+  const prompt = document.getElementById(`fix-input-${id}`).value.trim();
+  if (!prompt) return;
+  const btn = event.target;
+  btn.innerHTML = '<span class="loading"></span>Fixing...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/fix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: results[id], fix_prompt: prompt })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    results[id] = data;
+    const box = boxes.find(b => b.id === id);
+    if (box) box.verified = false;
+    renderResults();
+    renderBoxes();
+  } catch (e) {
+    alert('Fix failed: ' + e.message);
+  }
+  btn.innerHTML = 'Apply Fix';
+  btn.disabled = false;
+}
+
+async function verifyQuestion(id) {
+  const btn = document.getElementById(`verify-btn-${id}`);
+  btn.innerHTML = '<span class="loading"></span>Verifying...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: results[id] })
+    });
+    const data = await res.json();
+    const box = boxes.find(b => b.id === id);
+
+    const resultDiv = document.getElementById(`verify-result-${id}`);
+    if (data.correct) {
+      resultDiv.innerHTML = `<div class="verify-result verify-ok">✓ Verified — ${data.explanation}</div>`;
+      if (box) box.verified = true;
+    } else {
+      resultDiv.innerHTML = `<div class="verify-result verify-fail">✗ Issue found — ${data.explanation}</div>`;
+      if (box) box.verified = false;
+    }
+    renderResults();
+    renderBoxes();
+  } catch (e) {
+    alert('Verify failed: ' + e.message);
+  }
+  btn.innerHTML = '✓ Verify';
+  btn.disabled = false;
+}
+
+async function sendAll() {
+  const verified = boxes.filter(b => b.verified && results[b.id]);
+  if (verified.length === 0) { alert('Verify at least one question first!'); return; }
+
+  const spreadsheetId = document.getElementById('spreadsheet_id').value.trim();
+  const sheetSel = document.getElementById('sheet_selector');
+  const sheetName = sheetSel.value;
+
+  if (!spreadsheetId) { alert('Please paste a Spreadsheet ID first.'); return; }
+  if (!sheetName) { alert('Please fetch and select a destination sub-sheet first.'); return; }
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  
+  // 1. Gather all questions and validate figures BEFORE starting the send process
+  let questionsPayload = [];
+  
+  for (let b of verified) {
+      // Create a copy so we don't modify the local state unnecessarily
+      let qData = JSON.parse(JSON.stringify(results[b.id]));
+      
+      const toggle = document.getElementById(`toggle-fig-${b.id}`);
+      const errorMsg = document.getElementById(`fig-error-${b.id}`);
+      const hasFigures = toggle ? toggle.checked : false;
+
+      let qImages = [];
+      let sImages = [];
+
+      if (hasFigures) {
+          const qInput = document.getElementById(`q-figures-${b.id}`);
+          const sInput = document.getElementById(`s-figures-${b.id}`);
+          
+          if (qInput.files.length === 0 && sInput.files.length === 0) {
+              errorMsg.classList.remove('hidden');
+              alert(`Missing figures for Q${b.id}. Please add them or turn off the switch.`);
+              btn.disabled = false;
+              return; // Abort the whole send operation
+          }
+          errorMsg.classList.add('hidden');
+          
+          for (let file of qInput.files) qImages.push(await toBase64(file));
+          for (let file of sInput.files) sImages.push(await toBase64(file));
+      }
+      
+      // Attach figure data
+      qData.has_figures = hasFigures;
+      qData.question_figures = qImages;
+      qData.solution_figures = sImages;
+      
+      questionsPayload.push(qData);
+  }
+
+  // 2. Start Send Progress UI
+  const progressDiv = document.getElementById('send-progress');
+  const progressFill = document.getElementById('progress-fill');
+  const progressText = document.getElementById('progress-text');
+  progressDiv.style.display = 'block';
+
+  try {
+    progressText.textContent = `Sending ${questionsPayload.length} question(s) to Sheets & Telegram…`;
+    progressFill.style.width = '50%';
+
+    const res = await fetch('/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+          questions: questionsPayload, 
+          spreadsheet_id: spreadsheetId,
+          sheet_name: sheetName 
+      })
+    });
+    
+    const data = await res.json();
+    progressFill.style.width = '100%';
+    progressText.textContent = data.message || `${data.sent} sent!`;
+  } catch (e) {
+    progressText.textContent = 'Error: ' + e.message;
+  }
+
+  btn.disabled = false;
+}
+
+async function retryBox(id) {
+  const box = boxes.find(b => b.id === id);
+  if (!box) return;
+  if (box.images.length === 0) { alert('No images in this box!'); return; }
+  
+  const card = document.getElementById(`result-${id}`);
+  if (card) {
+    card.innerHTML = `
+      <div class="result-header">
+        <span class="result-title">Q${id}</span>
+        <span class="status-badge badge-generated"><span class="loading"></span>Generating...</span>
+      </div>
+    `;
+  }
+  
+  delete results[id];
+  box.verified = false;
+  
+  await generateBox(box);
+  renderResults();
+  renderBoxes();
+}
+
+for (let i = 0; i < 5; i++) addBox();
+
+</script>
+</body>
+</html>

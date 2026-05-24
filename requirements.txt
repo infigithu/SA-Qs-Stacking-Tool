@@ -1,0 +1,9 @@
+flask
+flask-cors
+openai
+anthropic
+gspread
+google-auth
+httpx
+
+python-dotenv
