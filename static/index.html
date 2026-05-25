@@ -136,6 +136,9 @@ async function fetchSheets() {
     const sheetId = document.getElementById('spreadsheet_id').value.trim();
     if (!sheetId) return alert('Please paste a Spreadsheet ID');
     
+    // Save the ID to the user's browser
+    localStorage.setItem('savedSpreadsheetId', sheetId);
+    
     const selector = document.getElementById('sheet_selector');
     selector.innerHTML = '<option value="">Loading...</option>';
     
@@ -586,6 +589,41 @@ async function retryBox(id) {
   renderBoxes();
 }
 
+
+// ==========================================
+// FEATURE: SAVED SETTINGS MEMORY
+// ==========================================
+
+// Save the selected sub-sheet whenever the user changes the dropdown
+document.getElementById('sheet_selector').addEventListener('change', function() {
+    if (this.value) {
+        localStorage.setItem('savedSheetName', this.value);
+    }
+});
+
+async function loadSavedSettings() {
+    const savedId = localStorage.getItem('savedSpreadsheetId');
+    const savedSheet = localStorage.getItem('savedSheetName');
+
+    if (savedId) {
+        document.getElementById('spreadsheet_id').value = savedId;
+        await fetchSheets();
+        
+        if (savedSheet) {
+            const selector = document.getElementById('sheet_selector');
+            let sheetExists = Array.from(selector.options).some(opt => opt.value === savedSheet);
+            if (sheetExists) {
+                selector.value = savedSheet;
+            }
+        }
+    }
+}
+
+// Call this function when the app starts
+loadSavedSettings();
+
+
+  
 // Start with 5 boxes
 for (let i = 0; i < 5; i++) addBox();
 
