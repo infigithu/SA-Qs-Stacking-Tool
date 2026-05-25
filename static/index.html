@@ -133,11 +133,14 @@ let results = {};
 let boxCounter = 0;
 
 // ==========================================
-// FEATURE 1: Fetch Google Sheets Logic
+// FEATURE 1: Fetch Google Sheets Logic (Updated with LocalStorage)
 // ==========================================
 async function fetchSheets() {
     const sheetId = document.getElementById('spreadsheet_id').value.trim();
     if (!sheetId) return alert('Please paste a Spreadsheet ID');
+    
+    // Save the ID to the user's browser
+    localStorage.setItem('savedSpreadsheetId', sheetId);
     
     const selector = document.getElementById('sheet_selector');
     selector.innerHTML = '<option value="">Loading...</option>';
@@ -147,7 +150,7 @@ async function fetchSheets() {
         const data = await res.json();
         
         if (data.sheets) {
-            selector.innerHTML = '';
+            selector.innerHTML = '<option value="">Select a sheet...</option>';
             data.sheets.forEach(name => {
                 selector.innerHTML += `<option value="${name}">${name}</option>`;
             });
@@ -162,6 +165,14 @@ async function fetchSheets() {
     }
 }
 
+
+
+// Save the selected sub-sheet whenever the user changes the dropdown
+document.getElementById('sheet_selector').addEventListener('change', function() {
+    if (this.value) {
+        localStorage.setItem('savedSheetName', this.value);
+    }
+});
 // ==========================================
 // FEATURE 2: Telegram Image Toggle Logic
 // ==========================================
@@ -598,6 +609,39 @@ async function retryBox(id) {
   renderResults();
   renderBoxes();
 }
+
+
+  // ==========================================
+// AUTO-LOAD SAVED SETTINGS
+// ==========================================
+async function loadSavedSettings() {
+    const savedId = localStorage.getItem('savedSpreadsheetId');
+    const savedSheet = localStorage.getItem('savedSheetName');
+
+    if (savedId) {
+        // 1. Fill in the ID
+        document.getElementById('spreadsheet_id').value = savedId;
+        
+        // 2. Automatically fetch the sheets for this ID
+        await fetchSheets();
+        
+        // 3. If they had a specific sheet selected last time, re-select it
+        if (savedSheet) {
+            const selector = document.getElementById('sheet_selector');
+            // Check if the saved sheet still exists in the fetched list
+            let sheetExists = Array.from(selector.options).some(opt => opt.value === savedSheet);
+            if (sheetExists) {
+                selector.value = savedSheet;
+            }
+        }
+    }
+}
+
+// Call this function when the app starts
+loadSavedSettings();
+
+
+  
 
 for (let i = 0; i < 5; i++) addBox();
 
