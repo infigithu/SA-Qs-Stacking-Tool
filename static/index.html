@@ -132,15 +132,9 @@ let boxes = [];
 let results = {};
 let boxCounter = 0;
 
-// ==========================================
-// FEATURE 1: Fetch Google Sheets Logic (Updated with LocalStorage)
-// ==========================================
 async function fetchSheets() {
     const sheetId = document.getElementById('spreadsheet_id').value.trim();
     if (!sheetId) return alert('Please paste a Spreadsheet ID');
-    
-    // Save the ID to the user's browser
-    localStorage.setItem('savedSpreadsheetId', sheetId);
     
     const selector = document.getElementById('sheet_selector');
     selector.innerHTML = '<option value="">Loading...</option>';
@@ -165,17 +159,6 @@ async function fetchSheets() {
     }
 }
 
-
-
-// Save the selected sub-sheet whenever the user changes the dropdown
-document.getElementById('sheet_selector').addEventListener('change', function() {
-    if (this.value) {
-        localStorage.setItem('savedSheetName', this.value);
-    }
-});
-// ==========================================
-// FEATURE 2: Telegram Image Toggle Logic
-// ==========================================
 function toggleFigures(id) {
     const container = document.getElementById(`figures-container-${id}`);
     const checkbox = document.getElementById(`toggle-fig-${id}`);
@@ -195,9 +178,6 @@ function toBase64(file) {
     });
 }
 
-// ==========================================
-// ORIGINAL LOGIC (Modified to inject UI)
-// ==========================================
 function addBox() {
   boxCounter++;
   const id = boxCounter;
@@ -360,7 +340,6 @@ function renderResults() {
           ${o.is_correct ? '✓' : '○'} <strong>${o.label}.</strong> ${o.text}
         </div>`).join('') : '<div style="font-size:13px;color:#888">Integer type — no options</div>';
 
-      // The new Telegram Image Upload block
       const figureUI = `
         <div class="mt-4 mb-4 p-4 border rounded-lg bg-gray-50 border-gray-200 shadow-sm">
             <label class="flex items-center gap-2 cursor-pointer mb-1">
@@ -520,11 +499,9 @@ async function sendAll() {
   const btn = document.getElementById('send-btn');
   btn.disabled = true;
   
-  // 1. Gather all questions and validate figures BEFORE starting the send process
   let questionsPayload = [];
   
   for (let b of verified) {
-      // Create a copy so we don't modify the local state unnecessarily
       let qData = JSON.parse(JSON.stringify(results[b.id]));
       
       const toggle = document.getElementById(`toggle-fig-${b.id}`);
@@ -542,7 +519,7 @@ async function sendAll() {
               errorMsg.classList.remove('hidden');
               alert(`Missing figures for Q${b.id}. Please add them or turn off the switch.`);
               btn.disabled = false;
-              return; // Abort the whole send operation
+              return; 
           }
           errorMsg.classList.add('hidden');
           
@@ -550,7 +527,6 @@ async function sendAll() {
           for (let file of sInput.files) sImages.push(await toBase64(file));
       }
       
-      // Attach figure data
       qData.has_figures = hasFigures;
       qData.question_figures = qImages;
       qData.solution_figures = sImages;
@@ -558,7 +534,6 @@ async function sendAll() {
       questionsPayload.push(qData);
   }
 
-  // 2. Start Send Progress UI
   const progressDiv = document.getElementById('send-progress');
   const progressFill = document.getElementById('progress-fill');
   const progressText = document.getElementById('progress-text');
@@ -611,75 +586,8 @@ async function retryBox(id) {
   renderBoxes();
 }
 
-
-  // ==========================================
-// AUTO-LOAD SAVED SETTINGS
-// ==========================================
-async function loadSavedSettings() {
-    const savedId = localStorage.getItem('savedSpreadsheetId');
-    const savedSheet = localStorage.getItem('savedSheetName');
-
-    if (savedId) {
-        // 1. Fill in the ID
-        document.getElementById('spreadsheet_id').value = savedId;
-        
-        // 2. Automatically fetch the sheets for this ID
-        await fetchSheets();
-        
-        // 3. If they had a specific sheet selected last time, re-select it
-        if (savedSheet) {
-            const selector = document.getElementById('sheet_selector');
-            // Check if the saved sheet still exists in the fetched list
-            let sheetExists = Array.from(selector.options).some(opt => opt.value === savedSheet);
-            if (sheetExists) {
-                selector.value = savedSheet;
-            }
-        }
-    }
-}
-
-
-
-
-
-  
-
-
-// ==========================================
-// FEATURE 2: Custom Multi-Image Uploader
-// ==========================================
-let selectedImageFiles = []; // Our virtual vault for the images
-const fileInput = document.getElementById('your_file_input_id'); // <-- IMPORTANT: Change this to match the ID of your actual <input> tag
-const previewContainer = document.getElementById('image_preview_container');
-
-// 1. Listen for new files being selected
-fileInput.addEventListener('change', function(event) {
-    const files = event.target.files;
-    for (let i = 0; i < files.length; i++) {
-        selectedImageFiles.push(files[i]);
-    }
-    
-    // Clear the HTML input so you can select the exact same file again if needed
-    fileInput.value = ''; 
-    
-    // Redraw the screen
-    renderPreviews();
-});
-
-  
-
-
-
-
-// Call this function when the app starts
-loadSavedSettings();
-
-
-  
-
+// Start with 5 boxes
 for (let i = 0; i < 5; i++) addBox();
-
-  
 
 </script>
 </body>
