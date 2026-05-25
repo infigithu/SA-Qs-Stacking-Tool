@@ -247,6 +247,7 @@ function renderBoxes() {
         <label class="solution-toggle">
           <label class="toggle-switch">
             <input type="checkbox" ${box.solutionIncluded ? 'checked' : ''} onchange="toggleSolution(${box.id}, this.checked)">
+            <div id="image_preview_container" class="flex flex-wrap gap-4 mt-4"></div>
             <span class="slider"></span>
           </label>
           Solution included
@@ -637,13 +638,107 @@ async function loadSavedSettings() {
     }
 }
 
+
+
+// ==========================================
+// FEATURE 2: Custom Multi-Image Uploader
+// ==========================================
+let selectedImageFiles = []; // Our virtual vault for the images
+const fileInput = document.getElementById('your_file_input_id'); // <-- IMPORTANT: Change this to match the ID of your actual <input> tag
+const previewContainer = document.getElementById('image_preview_container');
+
+// 1. Listen for new files being selected
+fileInput.addEventListener('change', function(event) {
+    const files = event.target.files;
+    for (let i = 0; i < files.length; i++) {
+        selectedImageFiles.push(files[i]);
+    }
+    
+    // Clear the HTML input so you can select the exact same file again if needed
+    fileInput.value = ''; 
+    
+    // Redraw the screen
+    renderPreviews();
+});
+
+// 2. Draw the thumbnails and the "X" button
+function renderPreviews() {
+    previewContainer.innerHTML = ''; // Clear the board
+    
+    selectedImageFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // Create a wrapper div
+            const div = document.createElement('div');
+            div.className = "relative inline-block"; // Tailwind classes for positioning
+            
+            // Create the thumbnail image
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = "w-24 h-24 object-cover rounded border border-gray-300 shadow-sm"; 
+            
+            // Create the Red "X" Button
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '×';
+            closeBtn.className = "absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-sm hover:bg-red-700 cursor-pointer shadow-md";
+            
+            // When the X is clicked, remove the file from our vault and redraw
+            closeBtn.onclick = function() {
+                selectedImageFiles.splice(index, 1);
+                renderPreviews();
+            };
+            
+            // Put it all together
+            div.appendChild(img);
+            div.appendChild(closeBtn);
+            previewContainer.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+  
+
+
+// ==========================================
+// FEATURE 2: Custom Multi-Image Uploader
+// ==========================================
+let selectedImageFiles = []; // Our virtual vault for the images
+const fileInput = document.getElementById('your_file_input_id'); // <-- IMPORTANT: Change this to match the ID of your actual <input> tag
+const previewContainer = document.getElementById('image_preview_container');
+
+// 1. Listen for new files being selected
+fileInput.addEventListener('change', function(event) {
+    const files = event.target.files;
+    for (let i = 0; i < files.length; i++) {
+        selectedImageFiles.push(files[i]);
+    }
+    
+    // Clear the HTML input so you can select the exact same file again if needed
+    fileInput.value = ''; 
+    
+    // Redraw the screen
+    renderPreviews();
+});
+
+  
+
+
+
+
 // Call this function when the app starts
 loadSavedSettings();
 
 
   
 
-for (let i = 0; i < 5; i++) addBox();
+// NEW WAY (Use our virtual vault instead)
+selectedImageFiles.forEach((file, index) => {
+    formData.append(`image_${index}`, file);
+});
+
+
+  
 
 </script>
 </body>
