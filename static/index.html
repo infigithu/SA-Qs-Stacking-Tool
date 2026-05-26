@@ -281,20 +281,35 @@ function toggleSolution(id, checked) {
 }
 
 async function generateAll() {
-  const ready = boxes.filter(b => b.images.length > 0);
-  if (ready.length === 0) { alert('Add images to at least one box first!'); return; }
+  // Only grab boxes that have images AND haven't been successfully generated yet
+  const ready = boxes.filter(b => b.images.length > 0 && !results[b.id]);
+  
+  if (ready.length === 0) { 
+      alert('Add images to at least one box (or all boxes are already generated)!'); 
+      return; 
+  }
 
   const btn = document.getElementById('generate-btn');
-  btn.innerHTML = '<span class="loading"></span>Generating...';
   btn.disabled = true;
 
-  const promises = ready.map(box => generateBox(box));
-  await Promise.all(promises);
+  // LOOP FIX: Process one box at a time instead of all at once
+  for (let i = 0; i < ready.length; i++) {
+      const currentBox = ready[i];
+      
+      // Update the button UI so you know it isn't frozen
+      btn.innerHTML = `<span class="loading"></span>Generating ${i + 1} of ${ready.length}...`;
+      
+      // Await pauses the loop until this specific box is completely finished
+      await generateBox(currentBox);
+      
+      // Redraw the screen immediately so you can see the results pop up one by one!
+      renderResults();
+      renderBoxes();
+  }
 
+  // Reset the button when everything is done
   btn.innerHTML = 'Generate All';
   btn.disabled = false;
-  renderResults();
-  renderBoxes();
 }
 
 async function generateBox(box) {
