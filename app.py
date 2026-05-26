@@ -236,7 +236,6 @@ Your tasks:
 1. Fix LaTeX formatting in the solution ONLY:
    - Replace \\(...\\) with $...$
    - Replace \\[...\\] with $$...$$
-   - Each $$...$$ block must have exactly ONE single-line equation
    - Remove \\displaystyle, aligned, cases, multiline environments
 2. Create all other fields (title, hint, tags, etc.)
 3. Update is_correct on options based on the solution.
@@ -285,22 +284,27 @@ HARD RULES:
 - Treat it like naming a piece of art, not a math problem
 
 
-
-STATEMENT (QUESTION) FORMATTING RULES:
-- Preserve the exact paragraph structure and visual alignment of the original question.
-- If the question has distinct conditions, cases, or bullet points, put each one on its own line with a blank line between them.
-- NEVER compress the question into one giant block of text.
-- Use $$...$$ for main equations so they sit neatly on their own line.
-
+STATEMENT (QUESTION) FORMATTING — STRICT:
+- NO PARAGRAPHS: Never write more than one sentence per block.
+- BLANK LINES: You MUST insert a complete blank line between every single sentence, condition, or case.
+- ISOLATE EQUATIONS: Any equation that sits on its own line MUST use this exact format:
+  $$
+  equation here
+  $$
+  The opening $$ must be on its own line, the equation on the next line, and the closing $$ on its own line.
+- ISOLATE THE DIRECTIVE: The final sentence (e.g., "Find the value of X") must sit completely alone at the bottom with a blank line above it.
+- STRICT MATH: Use $...$ for all inline math. NEVER use \aligned, \cases, \array, or \begin{...} inside the statement.
 
 
 SOLUTION FORMATTING RULES:
 - Each logical step in its own paragraph with a blank line between
 - Never write equations longer than 40 characters inside $$...$$
-- Break long equations across multiple $$ blocks:
-  $$first part$$
-  $$= next step$$
-  $$= final result$$
+- Use ONLY this exact format for display equations:
+  $$
+  equation here
+  $$
+- The opening $$ must be on its own line, the equation on the next line, and the closing $$ on its own line.
+- Break long equations across multiple blocks, but always follow the 3-line $$ format.
 - Prefer $...$ inline for short expressions
 - Never run two steps in the same $$ block
 - Short text before each equation explaining what you're doing
@@ -310,7 +314,6 @@ SOLUTION FORMATTING RULES:
 - No bullet points, no bold headers
 - No walls of text — short paragraphs only
 - Feel like a clean handwritten solution
-
 
 
 CHAPTER LIST — chapter_title MUST match exactly one of these:
@@ -329,7 +332,7 @@ Return ONLY raw JSON, no markdown fences:
   "type": "{q_type}",
   "level": "Easy or Medium or Hard or Elite",
   "max_xp": <3-13>,
-  "statement": "Rewrite the question in fresh English phrasing — different sentence structure and word order — while keeping ALL mathematical expressions, conditions, and values exactly identical. All math MUST be in inline LaTeX using $...$ format. Display equations use $$...$$ one per block single line only.",,
+  "statement": "Rewrite the question in fresh English phrasing while strictly preserving the visual alignment and line breaks of the original image. All math MUST be in inline LaTeX using $...$ format. Display equations must be wrapped in $$ placed on separate lines.",
   "solution": "solution with ONLY formatting fixed",
   "hint": "2-3 lines guiding toward approach without revealing answer",
   "correct_answer": "decimal for INT, empty string for SCQ/MCQ",
@@ -358,6 +361,18 @@ STRICT CONTENT RULES:
 - Every step must be understandable by a JEE Advanced student
 
 
+STATEMENT (QUESTION) FORMATTING — STRICT:
+- NO PARAGRAPHS: Never write more than one sentence per block.
+- BLANK LINES: You MUST insert a complete blank line between every single sentence, condition, or case.
+- ISOLATE EQUATIONS: Any equation that sits on its own line MUST use this exact format:
+  $$
+  equation here
+  $$
+  The opening $$ must be on its own line, the equation on the next line, and the closing $$ on its own line.
+- ISOLATE THE DIRECTIVE: The final sentence (e.g., "Find the value of X") must sit completely alone at the bottom with a blank line above it.
+- STRICT MATH: Use $...$ for all inline math. NEVER use \aligned, \cases, \array, or \begin{...} inside the statement.
+
+
 SOLUTION FORMATTING — STRICT:
 - Each sentence on its own line
 - Blank line between every step
@@ -367,11 +382,14 @@ SOLUTION FORMATTING — STRICT:
 - End each option with TRUE or FALSE on its own line
 - Never run two options in same paragraph
 - Use $...$ for all inline math
-- One $$...$$ per key equation, never more than one per block
+- Use ONLY this exact format for display equations:
+  $$
+  equation here
+  $$
+- The opening $$ must be on its own line, the equation on the next line, and the closing $$ on its own line.
 
 STRICT FORMATTING RULES:
 - Use $...$ for inline math ONLY
-- Use $$...$$ for display equations, ONE per block, single line only
 - NEVER use aligned, gather, array, cases, multiline environments
 - Solution max 8-10 lines. Skip obvious algebra. Jump to key steps only.
 
@@ -381,7 +399,9 @@ SOLUTION STRUCTURE FOR MCQ (multiple correct type):
 
 **A** — [one line conclusion] TRUE or FALSE
 [2-3 lines of working, each step on new line]
-$$key equation$$
+$$
+key equation
+$$
 
 - Never run option analyses together in one paragraph
 - Each option block must be visually separated
@@ -409,7 +429,7 @@ Return ONLY raw JSON, no markdown fences:
   "type": "{q_type}",
   "level": "Easy or Medium or Hard or Elite",
   "max_xp": <3-13>,
-  "statement": "statement": "Rewrite the question in fresh English phrasing — different sentence structure and word order — while keeping ALL mathematical expressions, conditions, and values exactly identical. All math MUST be in inline LaTeX using $...$ format. Display equations use $$...$$ one per block single line only.",,
+  "statement": "Rewrite the question in fresh English phrasing while strictly preserving the visual alignment and line breaks of the original image. All math MUST be in inline LaTeX using $...$ format. Display equations must be wrapped in $$ placed on separate lines.",
   "solution": "concise elegant solution, max 8-10 lines",
   "hint": "2-3 lines guiding toward approach without revealing answer",
   "correct_answer": "decimal for INT, empty string for SCQ/MCQ",
