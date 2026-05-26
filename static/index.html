@@ -259,7 +259,7 @@ function handleDrop(id, files) {
 function handleFiles(id, files) {
   const box = boxes.find(b => b.id === id);
   if (!box) return;
-  const remaining = 4 - box.images.length;
+  const remaining = 6 - box.images.length;
   const toAdd = Array.from(files).slice(0, remaining);
   let loaded = 0;
   toAdd.forEach(file => {
