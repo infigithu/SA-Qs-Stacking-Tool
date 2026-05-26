@@ -304,8 +304,19 @@ async function generateBox(box) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ images: box.images.map(i => i.b64), solution_included: box.solutionIncluded })
     });
+    
+    // Catch if the server entirely crashes (like a 502)
+    if (!response.ok) {
+        throw new Error(`Server Error: ${response.status} - Application failed to respond`);
+    }
+
     const data = await response.json();
+    
+    // Catch if Railway sends its own status JSON
+    if (data.status === "error") throw new Error(data.message || "Railway proxy timeout");
+    // Catch your own backend errors
     if (data.error) throw new Error(data.error);
+    
     results[box.id] = data;
   } catch (e) {
     results[box.id] = { error: e.message };
