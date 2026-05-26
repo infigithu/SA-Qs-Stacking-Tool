@@ -286,6 +286,13 @@ HARD RULES:
 
 
 
+STATEMENT (QUESTION) FORMATTING RULES:
+- Preserve the exact paragraph structure and visual alignment of the original question.
+- If the question has distinct conditions, cases, or bullet points, put each one on its own line with a blank line between them.
+- NEVER compress the question into one giant block of text.
+- Use $$...$$ for main equations so they sit neatly on their own line.
+
+
 
 SOLUTION FORMATTING RULES:
 - Each logical step in its own paragraph with a blank line between
@@ -322,7 +329,7 @@ Return ONLY raw JSON, no markdown fences:
   "type": "{q_type}",
   "level": "Easy or Medium or Hard or Elite",
   "max_xp": <3-13>,
-  "statement": "statement": "Rewrite the question in fresh English phrasing — different sentence structure and word order — while keeping ALL mathematical expressions, conditions, and values exactly identical. All math MUST be in inline LaTeX using $...$ format. Display equations use $$...$$ one per block single line only.",,
+  "statement": "Rewrite the question in fresh English phrasing — different sentence structure and word order — while keeping ALL mathematical expressions, conditions, and values exactly identical. All math MUST be in inline LaTeX using $...$ format. Display equations use $$...$$ one per block single line only.",,
   "solution": "solution with ONLY formatting fixed",
   "hint": "2-3 lines guiding toward approach without revealing answer",
   "correct_answer": "decimal for INT, empty string for SCQ/MCQ",
