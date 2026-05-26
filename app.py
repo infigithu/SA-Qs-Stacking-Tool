@@ -296,6 +296,18 @@ STATEMENT (QUESTION) FORMATTING — STRICT:
 - STRICT MATH: Use $...$ for all inline math. NEVER use \aligned, \cases, \array, or \begin{...} inside the statement.
 
 
+TABLE FORMATTING RULES:
+- If the question or solution contains a tabular format, please write tables using LaTeX array format inside double-dollar display math mode, like this:
+  $$
+  \\begin{{array}}{{|c|l|c|}}
+  \\hline
+  ...
+  \\end{{array}}
+  $$
+- Use \\text{{}} for words inside the table.
+- The opening $$ must be on its own line, the array on the next lines, and the closing $$ must be on its own line.
+
+
 SOLUTION FORMATTING RULES:
 - Each logical step in its own paragraph with a blank line between
 - Never write equations longer than 40 characters inside $$...$$
@@ -371,6 +383,18 @@ STATEMENT (QUESTION) FORMATTING — STRICT:
   The opening $$ must be on its own line, the equation on the next line, and the closing $$ on its own line.
 - ISOLATE THE DIRECTIVE: The final sentence (e.g., "Find the value of X") must sit completely alone at the bottom with a blank line above it.
 - STRICT MATH: Use $...$ for all inline math. NEVER use \aligned, \cases, \array, or \begin{...} inside the statement.
+
+
+TABLE FORMATTING RULES:
+- If the question or solution contains a tabular format, please write tables using LaTeX array format inside double-dollar display math mode, like this:
+  $$
+  \\begin{{array}}{{|c|l|c|}}
+  \\hline
+  ...
+  \\end{{array}}
+  $$
+- Use \\text{{}} for words inside the table.
+- The opening $$ must be on its own line, the array on the next lines, and the closing $$ must be on its own line.
 
 
 SOLUTION FORMATTING — STRICT:
