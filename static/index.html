@@ -322,7 +322,9 @@ async function generateBox(box) {
     
     // Catch if the server entirely crashes (like a 502)
     if (!response.ok) {
-        throw new Error(`Server Error: ${response.status} - Application failed to respond`);
+        // throw new Error(`Server Error: ${response.status} - Application failed to respond`);
+        const errorData = await response.json().catch(() => ({})); 
+        throw new Error(`Server Error: ${errorData.error || response.statusText}`);
     }
 
     const data = await response.json();
