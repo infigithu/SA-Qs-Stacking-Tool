@@ -7,14 +7,17 @@ from dotenv import load_dotenv
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
-import anthropic
+# import anthropic
+import google.generativeai as genai
 import gspread
 from google.oauth2.service_account import Credentials
 
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 GOOGLE_CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "credentials.json")
 GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
 GOOGLE_SPREADSHEET_ID = os.getenv("GOOGLE_SPREADSHEET_ID")
@@ -26,7 +29,8 @@ app = Flask(__name__, static_folder='static')
 CORS(app)
 
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
-anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+# anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 APPROVED_TAGS = """sets, union, intersection, complement, subset, power-set, cartesian-product, types-of-relations, equivalence-relation, types-of-functions, domain, range, codomain, inverse-function, composite-function, even-odd, periodic, graph-based, algebra, modulus, argument, conjugate, polar-form, euler-form, de-moivres-theorem, roots-of-unity, cube-roots-of-unity, geometry, locus, rotation, amplitude, real-imaginary-parts, inequalities, iota-powers, roots, nature-of-roots, discriminant, sum-of-roots, product-of-roots, factorization, completing-the-square, common-roots, symmetric-functions, transformation-of-roots, range-of-expression, sign-of-quadratic, max-min, ap, gp, hp, agp, sum-of-n-terms, nth-term, arithmetic-mean, geometric-mean, harmonic-mean, telescoping, vn-method, sum-of-squares, sum-of-cubes, infinite-gp, special-series, fundamental-principle, factorial, permutation, combination, circular-arrangement, identical-objects, distribution, selection, derangement, divisors, rank-of-word, grouping, at-least-at-most, gaps-method, expansion, general-term, middle-term, coefficient, greatest-term, independent-term, binomial-coefficients, properties, numerically-greatest-term, multinomial, sum-of-coefficients, divisibility, types-of-matrices, matrix-operations, transpose, adjoint, inverse, rank, determinant, properties-of-determinants, cofactors, system-of-equations, cramer-rule, consistency, skew-symmetric, orthogonal, elementary-operations, principle-of-induction, base-step, inductive-step, basic-ratios, pythagorean-identities, compound-angles, multiple-angles, sub-multiple-angles, product-to-sum, sum-to-product, allied-angles, conditional-identities, general-solution, principal-solution, sin-equation, cos-equation, tan-equation, quadratic-in-trig, multiple-angle-equations, domain-restricted, principal-value, identities, composition, simplification, inverse-properties, slope, forms-of-line, angle-between-lines, parallel, perpendicular, distance-formula, foot-of-perpendicular, image-of-point, family-of-lines, concurrency, area-of-triangle, section-formula, equation-of-circle, general-form, centre-radius, position-of-point, position-of-line, tangent, normal, chord-of-contact, pair-of-tangents, radical-axis, common-chord, family-of-circles, intercepts, standard-forms, focus-directrix, chord, parametric, pole-polar, conormal-points, reflection-property, standard-form, eccentricity, auxiliary-circle, conjugate-diameters, focal-chord, asymptotes, conjugate-hyperbola, rectangular-hyperbola, direct-substitution, indeterminate-forms, rationalization, standard-limits, lhopital, squeeze-theorem, trigonometric-limits, exponential-limits, logarithmic-limits, limits-at-infinity, continuity-at-point, continuity-in-interval, types-of-discontinuity, differentiability, left-right-derivatives, modulus-functions, greatest-integer, piecewise, first-principles, product-rule, quotient-rule, chain-rule, implicit-differentiation, parametric-differentiation, logarithmic-differentiation, higher-order-derivatives, differentiation-of-inverse-trig, tangent-normal, rate-of-change, increasing-decreasing, monotonicity, maxima-minima, first-derivative-test, second-derivative-test, rolles-theorem, lmvt, approximation, concavity-inflection, standard-integrals, substitution, by-parts, partial-fractions, trigonometric-integrals, reduction-formula, special-integrals, irrational-functions, integration-by-inspection, limits-of-integration, king-property, even-odd-property, periodic-functions, newton-leibniz, gamma-function, wallis-formula, area-under-curve, limit-as-sum, area-between-curves, area-with-x-axis, area-with-y-axis, shifting-graphs, absolute-value-functions, parametric-area, standard-areas, order-degree, variable-separable, homogeneous, linear-de, integrating-factor, bernoulli-equation, exact-de, formation-of-de, applications, clairaut-equation, types-of-vectors, addition, subtraction, scalar-multiplication, dot-product, cross-product, scalar-triple-product, vector-triple-product, collinearity, coplanarity, angle-between-vectors, projection, unit-vector, direction-cosines, direction-ratios, equation-of-line, equation-of-plane, angle-between-planes, distance-point-to-plane, skew-lines, shortest-distance, intersection, classical-probability, addition-theorem, conditional-probability, multiplication-theorem, bayes-theorem, total-probability, independent-events, mutually-exclusive, binomial-distribution, expected-value, odds, mean, median, mode, variance, standard-deviation, mean-deviation, frequency-distribution, grouped-data, combined-mean, combined-variance, coefficient-of-variation, statements, negation, conjunction, disjunction, implication, biconditional, contrapositive, converse, tautology, contradiction, quantifiers, validity-of-argument, theory, formula-based, proof, application, conceptual, calculation-heavy"""
 
@@ -473,15 +477,31 @@ Type: {q_type}
 Options: {options}
 Correct Answer hint: {correct_answer}"""
 
-    response = anthropic_client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=4096,
-        tools=GENERATE_TOOL,
-        tool_choice={"type": "tool", "name": "return_question_data"},
-        messages=[{"role": "user", "content": prompt}],
+    # response = anthropic_client.messages.create(
+    #     model="claude-haiku-4-5-20251001",
+    #     max_tokens=4096,
+    #     tools=GENERATE_TOOL,
+    #     tool_choice={"type": "tool", "name": "return_question_data"},
+    #     messages=[{"role": "user", "content": prompt}],
+    # )
+    # tool_block = next(b for b in response.content if b.type == "tool_use")
+    # return tool_block.input
+
+
+
+    # Using Gemini 1.5 Pro for high-level reasoning (or gemini-1.5-flash for maximum speed)
+    model = genai.GenerativeModel('gemini-2.5-flash')
+    
+    response = model.generate_content(
+        prompt,
+        generation_config={
+            "response_mime_type": "application/json",
+            "temperature": 0.2
+        }
     )
-    tool_block = next(b for b in response.content if b.type == "tool_use")
-    return tool_block.input
+    
+    # Gemini directly returns the JSON string, so we parse it and return it
+    return json.loads(response.text)
 
 
 # ---------------------------------------------------------------------------
@@ -536,13 +556,23 @@ FORMATTING RULES:
 Return ONLY the updated full JSON object with same structure, no markdown fences:
 {json.dumps(question, indent=2)}"""
 
-        response = anthropic_client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=4096,
-            tools=FIX_TOOL,
-            tool_choice={"type": "tool", "name": "return_question_data"},
-            messages=[{"role": "user", "content": prompt}],
+        # response = anthropic_client.messages.create(
+        #     model="claude-haiku-4-5-20251001",
+        #     max_tokens=4096,
+        #     tools=FIX_TOOL,
+        #     tool_choice={"type": "tool", "name": "return_question_data"},
+        #     messages=[{"role": "user", "content": prompt}],
+        # )
+
+        
+        response = model = genai.GenerativeModel('gemini-2.5-flash')
+        response = model.generate_content(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
         )
+        return jsonify(json.loads(response.text))
+
+        
         tool_block = next(b for b in response.content if b.type == "tool_use")
         return jsonify(tool_block.input)
     except Exception as e:
@@ -573,13 +603,24 @@ Correct Answer: {question.get('correct_answer', '')}
 Return ONLY this JSON, no extra text, no markdown:
 {{"correct": true, "explanation": "one line reason"}}"""
 
-        response = anthropic_client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=256,
-            tools=VERIFY_TOOL,
-            tool_choice={"type": "tool", "name": "return_verification"},
-            messages=[{"role": "user", "content": prompt}],
+        # response = anthropic_client.messages.create(
+        #     model="claude-haiku-4-5-20251001",
+        #     max_tokens=256,
+        #     tools=VERIFY_TOOL,
+        #     tool_choice={"type": "tool", "name": "return_verification"},
+        #     messages=[{"role": "user", "content": prompt}],
+        # )
+
+
+        
+        response = model = genai.GenerativeModel('gemini-2.5-flash')
+        response = model.generate_content(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
         )
+        return jsonify(json.loads(response.text))
+
+        
         tool_block = next(b for b in response.content if b.type == "tool_use")
         return jsonify(tool_block.input)
     except Exception as e:
