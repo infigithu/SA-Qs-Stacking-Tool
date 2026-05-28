@@ -665,18 +665,45 @@ def send():
                 send_images_to_telegram(title, q_images, s_images)
             
             # 2. Append to Google Sheets
+            # options = q.get("options", [])
+            # options_str = json.dumps(options) if isinstance(options, list) else options
+            # row = [
+            #     q.get("title", ""), q.get("chapter_title", ""), q.get("subject", ""),
+            #     q.get("type", ""), q.get("level", ""), q.get("max_xp", ""),
+            #     q.get("statement", ""), q.get("solution", ""), q.get("hint", ""),
+            #     q.get("correct_answer", ""), options_str, q.get("tags", ""),
+            #     q.get("is_visible", True), q.get("is_formula", False),
+            #     q.get("is_concept", False), q.get("is_pyq", False),
+            #     q.get("pyq_exam", ""), q.get("pyq_year", ""),
+            #     has_figures # New Column appended at the end
+            # ]
+
+
+            # 2. Append to Google Sheets
             options = q.get("options", [])
             options_str = json.dumps(options) if isinstance(options, list) else options
+            
+            # ---> NEW: Force tags to be a comma-separated string if Gemini returns a list
+            tags = q.get("tags", "")
+            tags_str = ", ".join(tags) if isinstance(tags, list) else tags
+            
             row = [
                 q.get("title", ""), q.get("chapter_title", ""), q.get("subject", ""),
                 q.get("type", ""), q.get("level", ""), q.get("max_xp", ""),
                 q.get("statement", ""), q.get("solution", ""), q.get("hint", ""),
-                q.get("correct_answer", ""), options_str, q.get("tags", ""),
+                q.get("correct_answer", ""), options_str, tags_str,
                 q.get("is_visible", True), q.get("is_formula", False),
                 q.get("is_concept", False), q.get("is_pyq", False),
                 q.get("pyq_exam", ""), q.get("pyq_year", ""),
                 has_figures # New Column appended at the end
             ]
+
+
+
+
+
+
+            
             sheet.append_row(row, value_input_option="RAW")
             sent += 1
 
