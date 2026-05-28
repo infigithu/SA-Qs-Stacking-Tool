@@ -466,7 +466,7 @@ Options: {options}
 Correct Answer hint: {correct_answer}"""
 
     response = anthropic_client.messages.create(
-        model="claude-3-5-haiku-20241022",
+        model="claude-haiku-4-5-20251001",
         max_tokens=4096,
         tools=GENERATE_TOOL,
         tool_choice={"type": "tool", "name": "return_question_data"},
@@ -529,7 +529,7 @@ Return ONLY the updated full JSON object with same structure, no markdown fences
 {json.dumps(question, indent=2)}"""
 
         response = anthropic_client.messages.create(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             max_tokens=4096,
             tools=FIX_TOOL,
             tool_choice={"type": "tool", "name": "return_question_data"},
@@ -566,7 +566,7 @@ Return ONLY this JSON, no extra text, no markdown:
 {{"correct": true, "explanation": "one line reason"}}"""
 
         response = anthropic_client.messages.create(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             max_tokens=256,
             tools=VERIFY_TOOL,
             tool_choice={"type": "tool", "name": "return_verification"},
