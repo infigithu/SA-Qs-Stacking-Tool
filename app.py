@@ -32,190 +32,182 @@ APPROVED_TAGS = """sets, union, intersection, complement, subset, power-set, car
 
 CHAPTER_LIST = """Units & Dimensions, Motion in One Dimension, Motion in Two Dimensions (Projectile Motion), Laws of Motion, Work Power & Energy, Centre of Mass, Rotational Motion, Gravitation, SHM, Waves (Sound & Mechanical), Kinetic Theory of Gases, Thermodynamics, Heat Transfer, Current Electricity, Capacitance, Moving Charges & Magnetism, Magnetism & Matter, Electromagnetic Waves, Electromagnetic Induction, Alternating Current, Ray Optics, Wave Optics, Dual Nature of Matter & Radiation, Atoms & Nuclei, Semiconductor Electronics, Communication Systems, Sets Relations & Functions, Complex Numbers, Quadratic Equations, Permutations & Combinations, Matrices & Determinants, Probability, Statistics, Limits & Continuity, Differentiation, Application of Derivatives, Definite Integrals, Differential Equations, Straight Lines, Circles, Parabola, Hyperbola, Ellipse, Vectors 2D, Vector 3D, Properties of Triangles, Heights & Distances, Functions, Circular Motion, Fluid Mechanics, Inverse Trignometry, Sequences & Series, Trigonometric Ratios & Identities, Indefinite Integrals, Electrostatics, Binomial Theorem, Applications of Derivatives, Sequence & Series, Principles of Communcation"""
 
-
 # ---------------------------------------------------------------------------
 # Anthropic tool schemas
 # ---------------------------------------------------------------------------
 
 _OPTION_SCHEMA = {
-"type": "object",
-"properties": {
-"label":      {"type": "string"},
-"text":       {"type": "string"},
-"is_correct": {"type": "boolean"},
-},
-"required": ["label", "text", "is_correct"],
+    "type": "object",
+    "properties": {
+        "label":      {"type": "string"},
+        "text":       {"type": "string"},
+        "is_correct": {"type": "boolean"},
+    },
+    "required": ["label", "text", "is_correct"],
 }
 
 _QUESTION_PROPERTIES = {
-"title":          {"type": "string"},
-"subject":        {"type": "string"},
-"chapter_title":  {"type": "string"},
-"type":           {"type": "string"},
-"level":          {"type": "string"},
-"max_xp":         {"type": "integer"},
-"statement":      {"type": "string"},
-"solution":       {"type": "string"},
-"hint":           {"type": "string"},
-"correct_answer": {"type": "string"},
-"options":        {"type": "array", "items": _OPTION_SCHEMA},
-"tags":           {"type": "string"},
-"is_visible":     {"type": "boolean"},
-"is_formula":     {"type": "boolean"},
-"is_concept":     {"type": "boolean"},
-"is_pyq":         {"type": "boolean"},
-"pyq_exam":       {"type": "string"},
-"pyq_year":       {"type": "string"},
+    "title":          {"type": "string"},
+    "subject":        {"type": "string"},
+    "chapter_title":  {"type": "string"},
+    "type":           {"type": "string"},
+    "level":          {"type": "string"},
+    "max_xp":         {"type": "integer"},
+    "statement":      {"type": "string"},
+    "solution":       {"type": "string"},
+    "hint":           {"type": "string"},
+    "correct_answer": {"type": "string"},
+    "options":        {"type": "array", "items": _OPTION_SCHEMA},
+    "tags":           {"type": "string"},
+    "is_visible":     {"type": "boolean"},
+    "is_formula":     {"type": "boolean"},
+    "is_concept":     {"type": "boolean"},
+    "is_pyq":         {"type": "boolean"},
+    "pyq_exam":       {"type": "string"},
+    "pyq_year":       {"type": "string"},
 }
 _QUESTION_REQUIRED = list(_QUESTION_PROPERTIES.keys())
 
 GENERATE_TOOL = [{
-"name": "return_question_data",
-"description": "Return the fully structured JEE question object.",
-"input_schema": {
-"type": "object",
-"properties": _QUESTION_PROPERTIES,
-"required": _QUESTION_REQUIRED,
-},
+    "name": "return_question_data",
+    "description": "Return the fully structured JEE question object.",
+    "input_schema": {
+        "type": "object",
+        "properties": _QUESTION_PROPERTIES,
+        "required": _QUESTION_REQUIRED,
+    },
 }]
 
-FIX_TOOL = GENERATE_TOOL 
+FIX_TOOL = GENERATE_TOOL 
 
 VERIFY_TOOL = [{
-"name": "return_verification",
-"description": "Return the verification result.",
-"input_schema": {
-"type": "object",
-"properties": {
-"correct":     {"type": "boolean"},
-"explanation": {"type": "string"},
-},
-"required": ["correct", "explanation"],
-},
+    "name": "return_verification",
+    "description": "Return the verification result.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "correct":     {"type": "boolean"},
+            "explanation": {"type": "string"},
+        },
+        "required": ["correct", "explanation"],
+    },
 }]
-
 
 # ---------------------------------------------------------------------------
 # Google Sheets & Telegram helpers
 # ---------------------------------------------------------------------------
 
 def _get_gc():
-scopes = [
-"https://www.googleapis.com/auth/spreadsheets",
-"https://www.googleapis.com/auth/drive",
-]
-if GOOGLE_CREDENTIALS_JSON:
-creds_dict = json.loads(GOOGLE_CREDENTIALS_JSON)
-creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-# Otherwise, use the local file (like on your computer)
-else:
-creds = Credentials.from_service_account_file(GOOGLE_CREDENTIALS_FILE, scopes=scopes)
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+    ]
+    if GOOGLE_CREDENTIALS_JSON:
+        creds_dict = json.loads(GOOGLE_CREDENTIALS_JSON)
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    else:
+        creds = Credentials.from_service_account_file(GOOGLE_CREDENTIALS_FILE, scopes=scopes)
 
-return gspread.authorize(creds)
+    return gspread.authorize(creds)
 
 def get_sheet(spreadsheet_id, sheet_name):
-gc = _get_gc()
-return gc.open_by_key(spreadsheet_id).worksheet(sheet_name)
+    gc = _get_gc()
+    return gc.open_by_key(spreadsheet_id).worksheet(sheet_name)
 
 def send_images_to_telegram(title, q_images, s_images):
-"""Sends base64 images directly to Telegram in memory."""
-if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-return
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return
 
-all_images = q_images + s_images
-if not all_images:
-return
+    all_images = q_images + s_images
+    if not all_images:
+        return
 
-files = {}
-media = []
+    files = {}
+    media = []
 
-for i, b64_str in enumerate(all_images):
-if b64_str.startswith("data:image"):
-b64_str = b64_str.split(",")[1]
+    for i, b64_str in enumerate(all_images):
+        if b64_str.startswith("data:image"):
+            b64_str = b64_str.split(",")[1]
 
-image_bytes = base64.b64decode(b64_str)
-file_name = f"image_{i}.jpg"
-files[file_name] = (file_name, image_bytes, "image/jpeg")
+        image_bytes = base64.b64decode(b64_str)
+        file_name = f"image_{i}.jpg"
+        files[file_name] = (file_name, image_bytes, "image/jpeg")
 
-media_item = {"type": "photo", "media": f"attach://{file_name}"}
-if i == 0:
-media_item["caption"] = title
-media.append(media_item)
+        media_item = {"type": "photo", "media": f"attach://{file_name}"}
+        if i == 0:
+            media_item["caption"] = title
+        media.append(media_item)
 
-if len(all_images) == 1:
-# Single image logic
-url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-data = {"chat_id": TELEGRAM_CHAT_ID, "caption": title}
-# files dict only needs "photo" key for sendPhoto
-single_file = {"photo": files["image_0.jpg"]}
-response = httpx.post(url, data=data, files=single_file, timeout=15.0)
-print(f"Telegram Response (Single): {response.text}")
-
-else:
-# Multiple images logic
-url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMediaGroup"
-data = {"chat_id": TELEGRAM_CHAT_ID, "media": json.dumps(media)}
-response = httpx.post(url, data=data, files=files, timeout=30.0)
-print(f"Telegram Response (Multi): {response.text}")
+    if len(all_images) == 1:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+        data = {"chat_id": TELEGRAM_CHAT_ID, "caption": title}
+        single_file = {"photo": files["image_0.jpg"]}
+        response = httpx.post(url, data=data, files=single_file, timeout=15.0)
+        print(f"Telegram Response (Single): {response.text}")
+    else:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMediaGroup"
+        data = {"chat_id": TELEGRAM_CHAT_ID, "media": json.dumps(media)}
+        response = httpx.post(url, data=data, files=files, timeout=30.0)
+        print(f"Telegram Response (Multi): {response.text}")
 
 # ---------------------------------------------------------------------------
 # extract_question
 # ---------------------------------------------------------------------------
 
 def extract_question(images_b64, solution_included):
-content = []
-for img in images_b64:
-content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img}"}})
+    content = []
+    for img in images_b64:
+        content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img}"}})
 
-if solution_included:
-prompt = """Extract the question AND solution from the provided image(s) exactly as given.
+    if solution_included:
+        prompt = """Extract the question AND solution from the provided image(s) exactly as given.
 Rewrite the statement in fresh English phrasing while keeping ALL math identical.
 All math must use $...$ for inline and $$...$$ for display equations.
 
 Return ONLY a raw JSON object, no markdown fences:
 {
- "statement": "rephrased question with all math in $...$",
- "type": "SCQ or MCQ or INT",
- "options": [
-   {"label": "A", "text": "option in $...$", "is_correct": true or false},
-   {"label": "B", "text": "option in $...$", "is_correct": false},
-   {"label": "C", "text": "option in $...$", "is_correct": false},
-   {"label": "D", "text": "option in $...$", "is_correct": false}
- ],
- "solution": "full solution preserving all math",
- "correct_answer": "numeric for INT, empty string for SCQ/MCQ"
+  "statement": "rephrased question with all math in $...$",
+  "type": "SCQ or MCQ or INT",
+  "options": [
+    {"label": "A", "text": "option in $...$", "is_correct": true or false},
+    {"label": "B", "text": "option in $...$", "is_correct": false},
+    {"label": "C", "text": "option in $...$", "is_correct": false},
+    {"label": "D", "text": "option in $...$", "is_correct": false}
+  ],
+  "solution": "full solution preserving all math",
+  "correct_answer": "numeric for INT, empty string for SCQ/MCQ"
 }
 For INT type options should be []."""
-else:
-prompt = """Extract ONLY the question from the provided image(s). Do NOT generate a solution.
+    else:
+        prompt = """Extract ONLY the question from the provided image(s). Do NOT generate a solution.
 Rewrite the statement in fresh English phrasing while keeping ALL math identical.
 All math must use $...$ for inline and $$...$$ for display equations.
 
 Return ONLY a raw JSON object, no markdown fences:
 {
- "statement": "rephrased question with all math in $...$",
- "type": "SCQ or MCQ or INT",
- "options": [
-   {"label": "A", "text": "option in $...$", "is_correct": true or false},
-   {"label": "B", "text": "option in $...$", "is_correct": false},
-   {"label": "C", "text": "option in $...$", "is_correct": false},
-   {"label": "D", "text": "option in $...$", "is_correct": false}
- ],
- "correct_answer": "numeric for INT if visible, empty string for SCQ/MCQ"
+  "statement": "rephrased question with all math in $...$",
+  "type": "SCQ or MCQ or INT",
+  "options": [
+    {"label": "A", "text": "option in $...$", "is_correct": true or false},
+    {"label": "B", "text": "option in $...$", "is_correct": false},
+    {"label": "C", "text": "option in $...$", "is_correct": false},
+    {"label": "D", "text": "option in $...$", "is_correct": false}
+  ],
+  "correct_answer": "numeric for INT if visible, empty string for SCQ/MCQ"
 }
 For INT type options should be []."""
 
-content.append({"type": "text", "text": prompt})
+    content.append({"type": "text", "text": prompt})
 
-response = openai_client.chat.completions.create(
-model="gpt-4o",
-max_tokens=4096,
-response_format={"type": "json_object"},
-messages=[{"role": "user", "content": content}],
-)
-raw = response.choices[0].message.content
-print(f"GPT-4o RAW:\n{raw}\n---END---")
-return json.loads(raw)
+    response = openai_client.chat.completions.create(
+        model="gpt-4o",
+        max_tokens=4096,
+        response_format={"type": "json_object"},
+        messages=[{"role": "user", "content": content}],
+    )
+    raw = response.choices[0].message.content
+    print(f"GPT-4o RAW:\n{raw}\n---END---")
+    return json.loads(raw)
 
 
 # ---------------------------------------------------------------------------
@@ -223,20 +215,20 @@ return json.loads(raw)
 # ---------------------------------------------------------------------------
 
 def generate_with_claude(question_data, solution_included):
-statement = question_data.get("statement", "")
-q_type = question_data.get("type", "SCQ")
-options = json.dumps(question_data.get("options", []))
-solution = question_data.get("solution", "")
-correct_answer = question_data.get("correct_answer", "")
+    statement = question_data.get("statement", "")
+    q_type = question_data.get("type", "SCQ")
+    options = json.dumps(question_data.get("options", []))
+    solution = question_data.get("solution", "")
+    correct_answer = question_data.get("correct_answer", "")
 
-if solution_included:
-prompt = f"""You are a JEE Advanced content formatter. The solution is already provided — do NOT change its mathematical content or logic.
+    if solution_included:
+        prompt = f"""You are a JEE Advanced content formatter. The solution is already provided — do NOT change its mathematical content or logic.
 
 Your tasks:
 1. Fix LaTeX formatting in the solution ONLY:
-  - Replace \\(...\\) with $...$
-  - Replace \\[...\\] with $$...$$
-  - Remove \\displaystyle, aligned, cases, multiline environments
+   - Replace \\(...\\) with $...$
+   - Replace \\[...\\] with $$...$$
+   - Remove \\displaystyle, aligned, cases, multiline environments
 2. Create all other fields (title, hint, tags, etc.)
 3. Update is_correct on options based on the solution.
 4. For INT type: extract correct_answer as decimal (e.g. 82/3 = 27.33)
@@ -249,7 +241,7 @@ Create a completely original, unexpected name for this question.
 
 The name must feel like it belongs in one of these worlds — pick randomly each time:
 - A Netflix show episode title
-- A song name from an indie/alternative album  
+- A song name from an indie/alternative album  
 - A chapter name from a dark fantasy novel
 - A viral tweet that went emotional
 - A late night thought at 3am
@@ -288,22 +280,22 @@ STATEMENT (QUESTION) FORMATTING — STRICT:
 - NO PARAGRAPHS: Never write more than one sentence per block.
 - BLANK LINES: You MUST insert a complete blank line between every single sentence, condition, or case.
 - ISOLATE EQUATIONS: Any equation that sits on its own line MUST use this exact format:
- $$
- equation here
- $$
- The opening $$ must be on its own line, the equation on the next line, and the closing $$ on its own line.
+  $$
+  equation here
+  $$
+  The opening $$ must be on its own line, the equation on the next line, and the closing $$ on its own line.
 - ISOLATE THE DIRECTIVE: The final sentence (e.g., "Find the value of X") must sit completely alone at the bottom with a blank line above it.
 - STRICT MATH: Use $...$ for all inline math. NEVER use \aligned, \cases, \array, or \begin{...} inside the statement.
 - SYMBOL REPLACEMENT: NEVER use the "not equal to" symbol (like ≠, !=, or \neq). You MUST write the plain text "is not equal to" instead.
 
 TABLE FORMATTING RULES:
 - If the question or solution contains a tabular format, please write tables using LaTeX array format inside double-dollar display math mode, like this:
- $$
- \\begin{{array}}{{|c|l|c|}}
- \\hline
- ...
- \\end{{array}}
- $$
+  $$
+  \\begin{{array}}{{|c|l|c|}}
+  \\hline
+  ...
+  \\end{{array}}
+  $$
 - Use \\text{{}} for words inside the table.
 - The opening $$ must be on its own line, the array on the next lines, and the closing $$ must be on its own line.
 
@@ -312,9 +304,9 @@ SOLUTION FORMATTING RULES:
 - Each logical step in its own paragraph with a blank line between
 - Never write equations longer than 40 characters inside $$...$$
 - Use ONLY this exact format for display equations:
- $$
- equation here
- $$
+  $$
+  equation here
+  $$
 - The opening $$ must be on its own line, the equation on the next line, and the closing $$ on its own line.
 - Break long equations across multiple blocks, but always follow the 3-line $$ format.
 - Prefer $...$ inline for short expressions
@@ -339,24 +331,24 @@ CRITICAL: Your response must be valid JSON. All backslashes in LaTeX must be dou
 
 Return ONLY raw JSON, no markdown fences:
 {{
- "title": "...",
- "subject": "Mathematics or Physics or Chemistry",
- "chapter_title": "must match chapter list",
- "type": "{q_type}",
- "level": "Easy or Medium or Hard or Elite",
- "max_xp": <3-13>,
- "statement": "Rewrite the question in fresh English phrasing while strictly preserving the visual alignment and line breaks of the original image. All math MUST be in inline LaTeX using $...$ format. Display equations must be wrapped in $$ placed on separate lines.",
- "solution": "solution with ONLY formatting fixed",
- "hint": "2-3 lines guiding toward approach without revealing answer",
- "correct_answer": "decimal for INT, empty string for SCQ/MCQ",
- "options": {options},
- "tags": "tag1, tag2, tag3",
- "is_visible": true,
- "is_formula": false,
- "is_concept": false,
- "is_pyq": false,
- "pyq_exam": "",
- "pyq_year": ""
+  "title": "...",
+  "subject": "Mathematics or Physics or Chemistry",
+  "chapter_title": "must match chapter list",
+  "type": "{q_type}",
+  "level": "Easy or Medium or Hard or Elite",
+  "max_xp": <3-13>,
+  "statement": "Rewrite the question in fresh English phrasing while strictly preserving the visual alignment and line breaks of the original image. All math MUST be in inline LaTeX using $...$ format. Display equations must be wrapped in $$ placed on separate lines.",
+  "solution": "solution with ONLY formatting fixed",
+  "hint": "2-3 lines guiding toward approach without revealing answer",
+  "correct_answer": "decimal for INT, empty string for SCQ/MCQ",
+  "options": {options},
+  "tags": "tag1, tag2, tag3",
+  "is_visible": true,
+  "is_formula": false,
+  "is_concept": false,
+  "is_pyq": false,
+  "pyq_exam": "",
+  "pyq_year": ""
 }}
 
 Statement: {statement}
@@ -364,8 +356,8 @@ Type: {q_type}
 Options: {options}
 Solution (DO NOT CHANGE MATH): {solution}
 Correct Answer: {correct_answer}"""
-else:
-prompt = f"""You are an elite JEE Advanced expert. Generate a complete solution and all fields.
+    else:
+        prompt = f"""You are an elite JEE Advanced expert. Generate a complete solution and all fields.
 
 STRICT CONTENT RULES:
 - NEVER use modular arithmetic, mod notation, or number theory beyond JEE syllabus
@@ -378,22 +370,22 @@ STATEMENT (QUESTION) FORMATTING — STRICT:
 - NO PARAGRAPHS: Never write more than one sentence per block.
 - BLANK LINES: You MUST insert a complete blank line between every single sentence, condition, or case.
 - ISOLATE EQUATIONS: Any equation that sits on its own line MUST use this exact format:
- $$
- equation here
- $$
- The opening $$ must be on its own line, the equation on the next line, and the closing $$ on its own line.
+  $$
+  equation here
+  $$
+  The opening $$ must be on its own line, the equation on the next line, and the closing $$ on its own line.
 - ISOLATE THE DIRECTIVE: The final sentence (e.g., "Find the value of X") must sit completely alone at the bottom with a blank line above it.
 - STRICT MATH: Use $...$ for all inline math. NEVER use \aligned, \cases, \array, or \begin{...} inside the statement.
 
 
 TABLE FORMATTING RULES:
 - If the question or solution contains a tabular format, please write tables using LaTeX array format inside double-dollar display math mode, like this:
- $$
- \\begin{{array}}{{|c|l|c|}}
- \\hline
- ...
- \\end{{array}}
- $$
+  $$
+  \\begin{{array}}{{|c|l|c|}}
+  \\hline
+  ...
+  \\end{{array}}
+  $$
 - Use \\text{{}} for words inside the table.
 - The opening $$ must be on its own line, the array on the next lines, and the closing $$ must be on its own line.
 
@@ -408,9 +400,9 @@ SOLUTION FORMATTING — STRICT:
 - Never run two options in same paragraph
 - Use $...$ for all inline math
 - Use ONLY this exact format for display equations:
- $$
- equation here
- $$
+  $$
+  equation here
+  $$
 - The opening $$ must be on its own line, the equation on the next line, and the closing $$ on its own line.
 
 STRICT FORMATTING RULES:
@@ -448,24 +440,24 @@ CRITICAL: Your response must be valid JSON. All backslashes in LaTeX must be dou
 
 Return ONLY raw JSON, no markdown fences:
 {{
- "title": "...",
- "subject": "Mathematics or Physics or Chemistry",
- "chapter_title": "must match chapter list",
- "type": "{q_type}",
- "level": "Easy or Medium or Hard or Elite",
- "max_xp": <3-13>,
- "statement": "Rewrite the question in fresh English phrasing while strictly preserving the visual alignment and line breaks of the original image. All math MUST be in inline LaTeX using $...$ format. Display equations must be wrapped in $$ placed on separate lines.",
- "solution": "concise elegant solution, max 8-10 lines",
- "hint": "2-3 lines guiding toward approach without revealing answer",
- "correct_answer": "decimal for INT, empty string for SCQ/MCQ",
- "options": {options},
- "tags": "tag1, tag2, tag3",
- "is_visible": true,
- "is_formula": false,
- "is_concept": false,
- "is_pyq": false,
- "pyq_exam": "",
- "pyq_year": ""
+  "title": "...",
+  "subject": "Mathematics or Physics or Chemistry",
+  "chapter_title": "must match chapter list",
+  "type": "{q_type}",
+  "level": "Easy or Medium or Hard or Elite",
+  "max_xp": <3-13>,
+  "statement": "Rewrite the question in fresh English phrasing while strictly preserving the visual alignment and line breaks of the original image. All math MUST be in inline LaTeX using $...$ format. Display equations must be wrapped in $$ placed on separate lines.",
+  "solution": "concise elegant solution, max 8-10 lines",
+  "hint": "2-3 lines guiding toward approach without revealing answer",
+  "correct_answer": "decimal for INT, empty string for SCQ/MCQ",
+  "options": {options},
+  "tags": "tag1, tag2, tag3",
+  "is_visible": true,
+  "is_formula": false,
+  "is_concept": false,
+  "is_pyq": false,
+  "pyq_exam": "",
+  "pyq_year": ""
 }}
 
 Statement: {statement}
@@ -473,15 +465,15 @@ Type: {q_type}
 Options: {options}
 Correct Answer hint: {correct_answer}"""
 
-response = anthropic_client.messages.create(
-        model="claude-haiku-4-5-20251001",
-max_tokens=4096,
-tools=GENERATE_TOOL,
-tool_choice={"type": "tool", "name": "return_question_data"},
-messages=[{"role": "user", "content": prompt}],
-)
-tool_block = next(b for b in response.content if b.type == "tool_use")
-return tool_block.input
+    response = anthropic_client.messages.create(
+        model="claude-3-5-haiku-20241022",
+        max_tokens=4096,
+        tools=GENERATE_TOOL,
+        tool_choice={"type": "tool", "name": "return_question_data"},
+        messages=[{"role": "user", "content": prompt}],
+    )
+    tool_block = next(b for b in response.content if b.type == "tool_use")
+    return tool_block.input
 
 
 # ---------------------------------------------------------------------------
@@ -490,34 +482,34 @@ return tool_block.input
 
 @app.route('/')
 def index():
-return send_from_directory('static', 'index.html')
+    return send_from_directory('static', 'index.html')
 
 
 @app.route('/generate', methods=['POST'])
 def generate():
-try:
-data = request.json
-images = data.get('images', [])
-solution_included = data.get('solution_included', False)
+    try:
+        data = request.json
+        images = data.get('images', [])
+        solution_included = data.get('solution_included', False)
 
-if not images:
-return jsonify({'error': 'No images provided'}), 400
+        if not images:
+            return jsonify({'error': 'No images provided'}), 400
 
-question_data = extract_question(images, solution_included)
-result = generate_with_claude(question_data, solution_included)
-return jsonify(result)
-except Exception as e:
-return jsonify({'error': str(e)}), 500
+        question_data = extract_question(images, solution_included)
+        result = generate_with_claude(question_data, solution_included)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/fix', methods=['POST'])
 def fix():
-try:
-data = request.json
-question = data.get('question', {})
-fix_prompt = data.get('fix_prompt', '')
+    try:
+        data = request.json
+        question = data.get('question', {})
+        fix_prompt = data.get('fix_prompt', '')
 
-prompt = f"""You are a JEE Advanced content editor. Fix the following question data based on the user's request.
+        prompt = f"""You are a JEE Advanced content editor. Fix the following question data based on the user's request.
 
 User request: {fix_prompt}
 
@@ -536,26 +528,26 @@ FORMATTING RULES:
 Return ONLY the updated full JSON object with same structure, no markdown fences:
 {json.dumps(question, indent=2)}"""
 
-response = anthropic_client.messages.create(
-            model="claude-haiku-4-5-20251001",
-max_tokens=4096,
-tools=FIX_TOOL,
-tool_choice={"type": "tool", "name": "return_question_data"},
-messages=[{"role": "user", "content": prompt}],
-)
-tool_block = next(b for b in response.content if b.type == "tool_use")
-return jsonify(tool_block.input)
-except Exception as e:
-return jsonify({'error': str(e)}), 500
+        response = anthropic_client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=4096,
+            tools=FIX_TOOL,
+            tool_choice={"type": "tool", "name": "return_question_data"},
+            messages=[{"role": "user", "content": prompt}],
+        )
+        tool_block = next(b for b in response.content if b.type == "tool_use")
+        return jsonify(tool_block.input)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/verify', methods=['POST'])
 def verify():
-try:
-data = request.json
-question = data.get('question', {})
+    try:
+        data = request.json
+        question = data.get('question', {})
 
-prompt = f"""You are a JEE Advanced solution checker. Your job is simple:
+        prompt = f"""You are a JEE Advanced solution checker. Your job is simple:
 
 1. Read the question and solution carefully
 2. Check if the final answer matches the correct option or correct_answer field
@@ -573,79 +565,80 @@ Correct Answer: {question.get('correct_answer', '')}
 Return ONLY this JSON, no extra text, no markdown:
 {{"correct": true, "explanation": "one line reason"}}"""
 
-response = anthropic_client.messages.create(
-            model="claude-haiku-4-5-20251001",
-max_tokens=256,
-tools=VERIFY_TOOL,
-tool_choice={"type": "tool", "name": "return_verification"},
-messages=[{"role": "user", "content": prompt}],
-)
-tool_block = next(b for b in response.content if b.type == "tool_use")
-return jsonify(tool_block.input)
-except Exception as e:
-return jsonify({'error': str(e)}), 500
+        response = anthropic_client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=256,
+            tools=VERIFY_TOOL,
+            tool_choice={"type": "tool", "name": "return_verification"},
+            messages=[{"role": "user", "content": prompt}],
+        )
+        tool_block = next(b for b in response.content if b.type == "tool_use")
+        return jsonify(tool_block.input)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/get_sheets', methods=['GET'])
 def get_sheets():
-"""Return all worksheet (sub-sheet) names for the provided spreadsheet ID."""
-try:
-spreadsheet_id = request.args.get('spreadsheet_id')
-if not spreadsheet_id:
-spreadsheet_id = GOOGLE_SPREADSHEET_ID
+    """Return all worksheet (sub-sheet) names for the provided spreadsheet ID."""
+    try:
+        spreadsheet_id = request.args.get('spreadsheet_id')
+        if not spreadsheet_id:
+            spreadsheet_id = GOOGLE_SPREADSHEET_ID
 
-gc = _get_gc()
-spreadsheet = gc.open_by_key(spreadsheet_id)
-sheet_names = [ws.title for ws in spreadsheet.worksheets()]
-return jsonify({'sheets': sheet_names})
-except Exception as e:
-return jsonify({'error': str(e)}), 500
+        gc = _get_gc()
+        spreadsheet = gc.open_by_key(spreadsheet_id)
+        sheet_names = [ws.title for ws in spreadsheet.worksheets()]
+        return jsonify({'sheets': sheet_names})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/send', methods=['POST'])
 def send():
-try:
-data = request.json
-questions = data.get('questions', [])
+    try:
+        data = request.json
+        questions = data.get('questions', [])
 
-spreadsheet_id = data.get('spreadsheet_id') or GOOGLE_SPREADSHEET_ID
-sheet_name = data.get('sheet_name') or GOOGLE_SHEET_NAME
-sheet = get_sheet(spreadsheet_id, sheet_name)
+        spreadsheet_id = data.get('spreadsheet_id') or GOOGLE_SPREADSHEET_ID
+        sheet_name = data.get('sheet_name') or GOOGLE_SHEET_NAME
+        sheet = get_sheet(spreadsheet_id, sheet_name)
 
-sent = 0
+        sent = 0
 
-for q in questions:
-# 1. Handle Telegram Images if switch is on
-has_figures = q.get('has_figures', False)
-if has_figures:
-q_images = q.get('question_figures', [])
-s_images = q.get('solution_figures', [])
-title = q.get("title", "Untitled Question")
-send_images_to_telegram(title, q_images, s_images)
+        for q in questions:
+            has_figures = q.get('has_figures', False)
+            if has_figures:
+                q_images = q.get('question_figures', [])
+                s_images = q.get('solution_figures', [])
+                title = q.get("title", "Untitled Question")
+                send_images_to_telegram(title, q_images, s_images)
 
-# 2. Append to Google Sheets
-options = q.get("options", [])
-options_str = json.dumps(options) if isinstance(options, list) else options
-row = [
-q.get("title", ""), q.get("chapter_title", ""), q.get("subject", ""),
-q.get("type", ""), q.get("level", ""), q.get("max_xp", ""),
-q.get("statement", ""), q.get("solution", ""), q.get("hint", ""),
-q.get("correct_answer", ""), options_str, q.get("tags", ""),
-q.get("is_visible", True), q.get("is_formula", False),
-q.get("is_concept", False), q.get("is_pyq", False),
-q.get("pyq_exam", ""), q.get("pyq_year", ""),
-has_figures # New Column appended at the end
-]
-sheet.append_row(row, value_input_option="RAW")
-sent += 1
+            options = q.get("options", [])
+            options_str = json.dumps(options) if isinstance(options, list) else options
+            
+            # THE FIX: Safely convert tags to a string before sending to Google Sheets
+            tags = q.get("tags", "")
+            tags_str = ", ".join(tags) if isinstance(tags, list) else tags
+            
+            row = [
+                q.get("title", ""), q.get("chapter_title", ""), q.get("subject", ""),
+                q.get("type", ""), q.get("level", ""), q.get("max_xp", ""),
+                q.get("statement", ""), q.get("solution", ""), q.get("hint", ""),
+                q.get("correct_answer", ""), options_str, tags_str,
+                q.get("is_visible", True), q.get("is_formula", False),
+                q.get("is_concept", False), q.get("is_pyq", False),
+                q.get("pyq_exam", ""), q.get("pyq_year", ""),
+                has_figures 
+            ]
+            sheet.append_row(row, value_input_option="RAW")
+            sent += 1
 
-return jsonify({'sent': sent, 'message': f'{sent} question(s) saved to "{sheet_name}"!'})
-except Exception as e:
-return jsonify({'error': str(e)}), 500
+        return jsonify({'sent': sent, 'message': f'{sent} question(s) saved to "{sheet_name}"!'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
-# Get the port from Railway, default to 5000 for local testing
-port = int(os.environ.get('PORT', 5000))
-# host='0.0.0.0' tells the app to listen to the outside internet
-app.run(host='0.0.0.0', port=port, debug=False)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
