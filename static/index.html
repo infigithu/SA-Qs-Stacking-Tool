@@ -3,24 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- <title>JEE Question Builder</title> -->
 
-<div class="inline-flex items-center bg-white border border-slate-200 shadow-sm rounded-2xl p-1">
-    
-    <span class="px-4 py-1.5 text-sm font-black text-slate-800 tracking-tight">
-        JEE Question Builder
-    </span>
-
-    <div class="w-px h-5 bg-slate-200 mx-1"></div>
-
-    <a href="/validator" target="_blank" class="flex items-center gap-1.5 px-4 py-1.5 text-sm font-bold text-indigo-600 bg-transparent hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer">
-        QA Validator
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-        </svg>
-    </a>
-
-</div>
   
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -105,14 +88,27 @@ input[type=file]{display:none}
 <body>
 
 <div class="topbar">
-  <div class="logo">JEE Question Builder</div>
+  
+  <div class="inline-flex items-center bg-white border border-slate-200 shadow-sm rounded-2xl p-1">
+      <span class="px-4 py-1.5 text-sm font-black text-slate-800 tracking-tight">
+          JEE Question Builder
+      </span>
+      <div class="w-px h-5 bg-slate-200 mx-1"></div>
+      <a href="/validator" target="_blank" class="flex items-center gap-1.5 px-4 py-1.5 text-sm font-bold text-indigo-600 bg-transparent hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer" style="text-decoration: none;">
+          QA Validator
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+          </svg>
+      </a>
+  </div>
+
   <div class="topbar-right">
     <span id="box-count" style="font-size:12px;color:#888"></span>
     <button class="btn" onclick="addBox()">+ Add Box</button>
     <button class="btn btn-primary" onclick="generateAll()" id="generate-btn">Generate All</button>
     <button class="btn btn-green" onclick="sendAll()" id="send-btn" disabled>Send to Sheets</button>
-    
   </div>
+  
 </div>
 
 <div class="workspace">
