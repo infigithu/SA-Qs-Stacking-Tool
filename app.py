@@ -11,6 +11,7 @@ import anthropic
 import gspread
 from google.oauth2.service_account import Credentials
 
+
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -480,9 +481,15 @@ Correct Answer hint: {correct_answer}"""
 # Flask routes
 # ---------------------------------------------------------------------------
 
+
+
 @app.route('/')
 def index():
     return send_from_directory('static', 'index.html')
+
+@app.route('/validator')
+def validator():
+    return send_from_directory('static', 'validator.html')
 
 
 @app.route('/generate', methods=['POST'])
