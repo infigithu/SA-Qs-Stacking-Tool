@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile App LaTeX & Markdown QA Validator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        html { scroll-behavior: smooth; }
+        .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; margin: 0.5em 0; }
+        .latex-content img { max-width: 100%; height: auto; border-radius: 8px; }
+        .latex-content p { margin-bottom: 0.5rem; }
+        .latex-content ul { list-style-type: disc; margin-left: 1.25rem; margin-bottom: 0.5rem; }
+        .latex-content ol { list-style-type: decimal; margin-left: 1.25rem; margin-bottom: 0.5rem; }
+        /* Mobile Simulator Screen Styles */
+        .mobile-mode { max-width: 412px !important; margin: 80px auto 24px auto !important; padding: 0 12px !important; }
+        .mobile-mode .queue-card { padding: 16px !important; border-radius: 12px !important; font-size: 14px !important; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col pt-16">
+
+    <header id="sticky-header" class="hidden fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2 shrink-0">
+                <span class="font-bold text-slate-900 text-sm hidden sm:inline">Mobile QA Engine</span>
+                <span id="header-counter" class="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">Qs 1 of 0</span>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <button id="toggle-view-mode" onclick="toggleViewMode()" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-lg transition">
+                    📱 Simulate Mobile App Screen
+                </button>
+                <button id="export-csv-btn" onclick="exportUpdatedCSV()" class="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition shadow-sm">
+                    📥 Download Fixed CSV
+                </button>
+                <button onclick="resetApp()" class="px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content-layout" class="flex-grow max-w-4xl w-full mx-auto p-4 transition-all duration-300">
+        
+        <div id="upload-container" class="mt-12">
+            <div class="text-center max-w-xl mx-auto mb-8">
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight">Mobile Application LaTeX Sandbox</h1>
+                <p class="mt-2 text-xs text-slate-500">Formats text arrays via Markdown rendering, structural JSON extraction, and client-side validation loops.</p>
+            </div>
+            <div id="drop-zone" class="border-2 border-dashed border-slate-300 bg-white rounded-xl p-12 text-center cursor-pointer hover:border-indigo-500 transition shadow-xs">
+                <input type="file" id="file-input" accept=".csv" class="hidden">
+                <p class="text-sm font-semibold text-slate-700">Drag & drop standard test-export CSV files</p>
+                <p class="text-xs text-slate-400 mt-1">Parses Statement, Title, Options JSON, Correct Answers, and Solutions</p>
+            </div>
+        </div>
+
+        <div id="mapper-container" class="hidden bg-white border border-slate-200 rounded-xl p-6 shadow-sm mt-6">
+            <h2 class="text-base font-bold text-slate-900 mb-2">Validate Target Variable Mappings</h2>
+            <p class="text-xs text-slate-500 mb-4">Confirm column headers to direct values into the rendering loops securely.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Question Title Source</label>
+                    <select id="map-title" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Difficulty Level Badge Source</label>
+                    <select id="map-level" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Question/Statement Body Text</label>
+                    <select id="map-question" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Options Data (JSON String or Array)</label>
+                    <select id="map-options" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Correct Answer Output (JSON or Numerical Integer Target)</label>
+                    <select id="map-correct" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Solutions / Step Derivations</label>
+                    <select id="map-solution" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="generateVisualQueue()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow-xs transition">
+                    Construct Compilation Queue
+                </button>
+            </div>
+        </div>
+
+        <div id="queue-container" class="hidden space-y-6 mt-4 mb-24"></div>
+
+    </main>
+
+    <script>
+        let rawDataset = [];
+        let dataHeaders = [];
+        let isMobileSimulated = false;
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadContainer = document.getElementById('upload-container');
+        const mapperContainer = document.getElementById('mapper-container');
+        const queueContainer = document.getElementById('queue-container');
+        const stickyHeader = document.getElementById('sticky-header');
+        const mainLayout = document.getElementById('main-content-layout');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files.length > 0) processCSVFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) processCSVFile(e.target.files[0]); });
+
+        function processCSVFile(file) {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    rawDataset = results.data;
+                    dataHeaders = results.meta.fields || Object.keys(results.data[0] || {});
+                    
+                    uploadContainer.classList.add('hidden');
+                    mapperContainer.classList.remove('hidden');
+
+                    autoSetMappingDropdowns();
+                }
+            });
+        }
+
+        function autoSetMappingDropdowns() {
+            populateSelector('map-title', dataHeaders, ['title', 'id']);
+            populateSelector('map-level', dataHeaders, ['level', 'difficulty']);
+            populateSelector('map-question', dataHeaders, ['statement', 'question', 'text']);
+            populateSelector('map-options', dataHeaders, ['options', 'choices']);
+            populateSelector('map-correct', dataHeaders, ['correct_answer', 'answer', 'key']);
+            populateSelector('map-solution', dataHeaders, ['solution', 'explain']);
+        }
+
+        function populateSelector(id, items, heuristics) {
+            const el = document.getElementById(id);
+            el.innerHTML = '';
+            let selectedIdx = 0;
+            items.forEach((item, index) => {
+                const opt = document.createElement('option');
+                opt.value = item; opt.textContent = item;
+                el.appendChild(opt);
+                heuristics.forEach(h => { if(item.toLowerCase().includes(h)) selectedIdx = index; });
+            });
+            el.selectedIndex = selectedIdx;
+        }
+
+        function toggleViewMode() {
+            isMobileSimulated = !isMobileSimulated;
+            const btn = document.getElementById('toggle-view-mode');
+            if (isMobileSimulated) {
+                mainLayout.classList.add('mobile-mode');
+                btn.textContent = "💻 Switch to Desktop Mode";
+                btn.classList.replace('text-slate-700', 'text-indigo-700');
+                btn.classList.replace('bg-slate-200', 'bg-indigo-100');
+            } else {
+                mainLayout.classList.remove('mobile-mode');
+                btn.textContent = "📱 Simulate Mobile App Screen";
+                btn.classList.replace('text-indigo-700', 'text-slate-700');
+                btn.classList.replace('bg-indigo-100', 'bg-slate-200');
+            }
+            window.scrollTo(0, window.scrollY + 1);
+        }
+
+        function generateVisualQueue() {
+            mapperContainer.classList.add('hidden');
+            queueContainer.innerHTML = '';
+            
+            const tKey = document.getElementById('map-title').value;
+            const lKey = document.getElementById('map-level').value;
+            const qKey = document.getElementById('map-question').value;
+            const oKey = document.getElementById('map-options').value;
+            const cKey = document.getElementById('map-correct').value;
+            const sKey = document.getElementById('map-solution').value;
+
+            // Cache data attributes inside root queue container for the correction engine
+            queueContainer.setAttribute('data-tkey', tKey);
+            queueContainer.setAttribute('data-lkey', lKey);
+            queueContainer.setAttribute('data-qkey', qKey);
+            queueContainer.setAttribute('data-okey', oKey);
+            queueContainer.setAttribute('data-ckey', cKey);
+            queueContainer.setAttribute('data-skey', sKey);
+
+            rawDataset.forEach((row, idx) => {
+                const card = document.createElement('div');
+                card.className = "queue-card bg-white border border-slate-200 rounded-xl p-6 shadow-xs relative transition-all";
+                card.id = `item-card-${idx}`;
+                card.setAttribute('data-index', idx + 1);
+
+                const rawTitle = row[tKey] || 'Untitled Item';
+                const rawLevel = row[lKey] || 'N/A';
+                const rawQuestion = row[qKey] || '';
+                const rawOptions = row[oKey] || '';
+                const rawCorrect = row[cKey] || '';
+                const rawSolution = row[sKey] || '';
+
+                // Identify if question is pure integer or standard text choice selection block
+                const isQuestionIntegerType = checkIsIntegerType(rawOptions, rawCorrect);
+
+                card.innerHTML = `
+                    <div class="view-state space-y-4">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100 gap-2">
+                            <div class="flex items-center space-x-2 truncate">
+                                <span class="bg-slate-900 text-white text-[11px] font-black px-2 py-0.5 rounded shrink-0">Qs ${idx + 1}</span>
+                                <span class="text-xs font-bold text-slate-700 truncate" title="${escapeHtml(rawTitle)}">${escapeHtml(rawTitle)}</span>
+                            </div>
+                            <div class="flex items-center space-x-3 shrink-0">
+                                <button onclick="toggleCardVisibility(${idx})" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition">👁️ Reveal Option/Solution</button>
+                                <button onclick="enterEditMode(${idx})" class="text-xs font-bold text-slate-500 hover:text-slate-800 transition">✏️ Edit</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Difficulty: ${escapeHtml(rawLevel)}</span>
+                            <div class="latex-content text-slate-900 text-sm leading-relaxed">${renderMarkdownAndLatex(rawQuestion)}</div>
+                        </div>
+
+                        <div class="hidden-review-block hidden space-y-4 pt-2 border-t border-slate-100">
+                            
+                            <div>
+                                <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">
+                                    ${isQuestionIntegerType ? 'Integer' : 'Options'}
+                                </span>
+                                ${isQuestionIntegerType ? renderIntegerDisplayBlock(rawCorrect) : renderOptionsDisplayBlock(rawOptions)}
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <span class="block text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-1">Verified Structural Solution</span>
+                                <div class="latex-content text-slate-700 text-xs leading-relaxed">${renderMarkdownAndLatex(rawSolution)}</div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="edit-state hidden space-y-3 bg-indigo-50/50 p-4 rounded-xl border border-indigo-200 -m-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-black text-indigo-900 uppercase">Live Card Correction Workspace</span>
+                            <span class="text-[10px] text-indigo-500 font-medium">Auto-saves to memory states</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Question Title</label>
+                                <input type="text" class="edit-t w-full border border-slate-300 rounded-lg p-2 text-xs focus:outline-indigo-500 bg-white" value="${rawTitle}">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Difficulty Level</label>
+                                <input type="text" class="edit-l w-full border border-slate-300 rounded-lg p-2 text-xs focus:outline-indigo-500 bg-white" value="${rawLevel}">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Question Content Block</label>
+                            <textarea class="edit-q w-full border border-slate-300 rounded-lg p-2 text-xs font-mono h-24 focus:outline-indigo-500 bg-white">${rawQuestion}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Options Data (Clear out row entirely if question is Integer type)</label>
+                            <textarea class="edit-o w-full border border-slate-300 rounded-lg p-2 text-xs font-mono h-20 focus:outline-indigo-500 bg-white">${rawOptions}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Correct Answer Index / Explicit Integer Target</label>
+                            <input type="text" class="edit-c w-full border border-slate-300 rounded-lg p-2 text-xs font-mono focus:outline-indigo-500 bg-white" value="${rawCorrect}">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Detailed Solution Matrix</label>
+                            <textarea class="edit-s w-full border border-slate-300 rounded-lg p-2 text-xs font-mono h-24 focus:outline-indigo-500 bg-white">${rawSolution}</textarea>
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-2">
+                            <button onclick="exitEditMode(${idx}, false)" class="px-3 py-1.5 text-xs font-semibold bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 transition">Cancel</button>
+                            <button onclick="exitEditMode(${idx}, true)" class="px-3 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Save Changes & Refresh</button>
+                        </div>
+                    </div>
+                `;
+                queueContainer.appendChild(card);
+            });
+
+            triggerLatexEngine();
+            queueContainer.classList.remove('hidden');
+            stickyHeader.classList.remove('hidden');
+            trackViewPosition();
+        }
+
+        // Logic parameters to separate options layouts vs unique integers
+        function checkIsIntegerType(optionsRaw, correctRaw) {
+            // If the option field is empty or completely missing, flag it as an Integer target
+            if (!optionsRaw || optionsRaw.trim() === '' || optionsRaw.trim() === '[]') return true;
+            
+            // Check if the correct answer field contains an explicit lone numerical sequence
+            const trimmedCorrect = String(correctRaw).trim();
+            const isNumericalValue = /^[+-]?\d+(\.\d+)?$/.test(trimmedCorrect);
+            
+            try {
+                const parsed = JSON.parse(optionsRaw);
+                if (Array.isArray(parsed) && parsed.length > 0) return false;
+            } catch(e) {
+                if (isNumericalValue) return true;
+            }
+            return false;
+        }
+
+        function renderMarkdownAndLatex(rawText) {
+            if(!rawText) return `<span class="text-slate-400 italic">Field contains empty string context</span>`;
+            return marked.parse(rawText);
+        }
+
+        function renderIntegerDisplayBlock(correctRaw) {
+            const val = String(correctRaw).trim() || 'N/A';
+            return `
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 inline-flex items-center space-x-2">
+                    <span class="text-xs font-bold text-amber-800">Numerical Target Output:</span>
+                    <span class="font-mono text-sm font-black text-amber-900">${escapeHtml(val)}</span>
+                </div>
+            `;
+        }
+
+        function renderOptionsDisplayBlock(optionsRaw) {
+            try {
+                let parsedOptions = JSON.parse(optionsRaw.trim());
+                if (Array.isArray(parsedOptions)) {
+                    let itemsHtml = parsedOptions.map((opt) => {
+                        let text = typeof opt === 'object' ? (opt.text || JSON.stringify(opt)) : opt;
+                        let isCorrectBadge = opt.is_correct ? `<span class="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded shrink-0">Correct Choice</span>` : '';
+                        let labelPrefix = opt.label ? `<span class="font-bold text-slate-400 pr-1">${opt.label}.</span>` : '';
+                        return `
+                            <div class="flex items-start justify-between gap-2 p-2 bg-white border border-slate-100 rounded-md text-xs">
+                                <div class="latex-content flex-grow">${labelPrefix}${renderMarkdownAndLatex(text)}</div>
+                                ${isCorrectBadge}
+                            </div>
+                        `;
+                    }).join('');
+
+                    return `<div class="space-y-1.5">${itemsHtml}</div>`;
+                }
+            } catch (e) {
+                return `
+                    <div class="bg-red-50 p-3 rounded-lg border border-red-200 text-xs text-red-900">
+                        <span class="block text-[10px] font-black text-red-700 uppercase tracking-wider mb-1">⚠️ Option Structural Crash Error</span>
+                        <div class="bg-white/80 p-2 rounded border border-red-300 font-mono text-[11px] break-all whitespace-pre-wrap">${escapeHtml(optionsRaw)}</div>
+                    </div>
+                `;
+            }
+            return '';
+        }
+
+        // Dropdown Visibility Control Toggles
+        function toggleCardVisibility(index) {
+            const card = document.getElementById(`item-card-${index}`);
+            const block = card.querySelector('.hidden-review-block');
+            const btn = card.querySelector('button');
+
+            if(block.classList.contains('hidden')) {
+                block.classList.remove('hidden');
+                btn.textContent = "🙈 Hide Option/Solution";
+            } else {
+                block.classList.add('hidden');
+                btn.textContent = "👁️ Reveal Option/Solution";
+            }
+        }
+
+        function enterEditMode(index) {
+            const card = document.getElementById(`item-card-${index}`);
+            card.querySelector('.view-state').classList.add('hidden');
+            card.querySelector('.edit-state').classList.remove('hidden');
+        }
+
+        function exitEditMode(index, saveChanges) {
+            const card = document.getElementById(`item-card-${index}`);
+            
+            if (saveChanges) {
+                const tKey = queueContainer.getAttribute('data-tkey');
+                const lKey = queueContainer.getAttribute('data-lkey');
+                const qKey = queueContainer.getAttribute('data-qkey');
+                const oKey = queueContainer.getAttribute('data-okey');
+                const cKey = queueContainer.getAttribute('data-ckey');
+                const sKey = queueContainer.getAttribute('data-skey');
+
+                // Read structural changes out of modified input boxes
+                rawDataset[index][tKey] = card.querySelector('.edit-t').value;
+                rawDataset[index][lKey] = card.querySelector('.edit-l').value;
+                rawDataset[index][qKey] = card.querySelector('.edit-q').value;
+                rawDataset[index][oKey] = card.querySelector('.edit-o').value;
+                rawDataset[index][cKey] = card.querySelector('.edit-c').value;
+                rawDataset[index][sKey] = card.querySelector('.edit-s').value;
+
+                const updatedTitle = rawDataset[index][tKey];
+                const updatedLevel = rawDataset[index][lKey];
+                const updatedQuestion = rawDataset[index][qKey];
+                const updatedOptions = rawDataset[index][oKey];
+                const updatedCorrect = rawDataset[index][cKey];
+                const updatedSolution = rawDataset[index][sKey];
+
+                const isQuestionIntegerType = checkIsIntegerType(updatedOptions, updatedCorrect);
+
+                // Build output display safely
+                card.innerHTML = `
+                    <div class="view-state space-y-4">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100 gap-2">
+                            <div class="flex items-center space-x-2 truncate">
+                                <span class="bg-slate-950 text-white text-[11px] font-black px-2 py-0.5 rounded shrink-0">Qs ${index + 1}</span>
+                                <span class="text-xs font-bold text-slate-800 truncate" title="${escapeHtml(updatedTitle)}">${escapeHtml(updatedTitle)}</span>
+                            </div>
+                            <div class="flex items-center space-x-3 shrink-0">
+                                <button onclick="toggleCardVisibility(${index})" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition">🙈 Hide Option/Solution</button>
+                                <button onclick="enterEditMode(${index})" class="text-xs font-bold text-slate-500 hover:text-slate-800 transition">✏️ Edit</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Difficulty: ${escapeHtml(updatedLevel)}</span>
+                            <div class="latex-content text-slate-900 text-sm leading-relaxed">${renderMarkdownAndLatex(updatedQuestion)}</div>
+                        </div>
+
+                        <div class="hidden-review-block space-y-4 pt-2 border-t border-slate-100">
+                            <div>
+                                <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">
+                                    ${isQuestionIntegerType ? 'Integer' : 'Options'}
+                                </span>
+                                ${isQuestionIntegerType ? renderIntegerDisplayBlock(updatedCorrect) : renderOptionsDisplayBlock(updatedOptions)}
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <span class="block text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-1">Verified Structural Solution</span>
+                                <div class="latex-content text-slate-700 text-xs leading-relaxed">${renderMarkdownAndLatex(updatedSolution)}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="edit-state hidden space-y-3 bg-indigo-50/50 p-4 rounded-xl border border-indigo-200 -m-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-black text-indigo-900 uppercase">Live Card Correction Workspace</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Question Title</label>
+                                <input type="text" class="edit-t w-full border border-slate-300 rounded-lg p-2 text-xs focus:outline-indigo-500 bg-white" value="${updatedTitle}">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Difficulty Level</label>
+                                <input type="text" class="edit-l w-full border border-slate-300 rounded-lg p-2 text-xs focus:outline-indigo-500 bg-white" value="${updatedLevel}">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Question Content Block</label>
+                            <textarea class="edit-q w-full border border-slate-300 rounded-lg p-2 text-xs font-mono h-24 focus:outline-indigo-500 bg-white">${updatedQuestion}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Options Data</label>
+                            <textarea class="edit-o w-full border border-slate-300 rounded-lg p-2 text-xs font-mono h-20 focus:outline-indigo-500 bg-white">${updatedOptions}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Correct Answer Index</label>
+                            <input type="text" class="edit-c w-full border border-slate-300 rounded-lg p-2 text-xs font-mono focus:outline-indigo-500 bg-white" value="${updatedCorrect}">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Detailed Solution Matrix</label>
+                            <textarea class="edit-s w-full border border-slate-300 rounded-lg p-2 text-xs font-mono h-24 focus:outline-indigo-500 bg-white">${updatedSolution}</textarea>
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-2">
+                            <button onclick="exitEditMode(${index}, false)" class="px-3 py-1.5 text-xs font-semibold bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 transition">Cancel</button>
+                            <button onclick="exitEditMode(${index}, true)" class="px-3 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Save Changes & Refresh</button>
+                        </div>
+                    </div>
+                `;
+
+                // Re-evaluate localized mathematical typesetting bounds over the targeted card structure
+                renderMathInElement(card, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ],
+                    throwOnError: false
+                });
+            } else {
+                card.querySelector('.edit-state').classList.add('hidden');
+                card.querySelector('.view-state').classList.remove('hidden');
+            }
+        }
+
+        function exportUpdatedCSV() {
+            if(rawDataset.length === 0) return;
+            const updatedCSV = Papa.unparse(rawDataset);
+            const blob = new Blob([updatedCSV], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", "Verified_Mobile_Questions_Export.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function triggerLatexEngine() {
+            renderMathInElement(queueContainer, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });
+        }
+
+        function trackViewPosition() {
+            const cards = document.querySelectorAll('.queue-card');
+            if(cards.length === 0) return;
+            let currentItem = 1;
+            let minDistance = Infinity;
+
+            cards.forEach(card => {
+                const rect = card.getBoundingClientRect();
+                const targetDistance = Math.abs(rect.top - 80);
+                if (targetDistance < minDistance) {
+                    minDistance = targetDistance;
+                    currentItem = card.getAttribute('data-index');
+                }
+            });
+            document.getElementById('header-counter').textContent = `Qs ${currentItem} of ${cards.length}`;
+        }
+
+        window.addEventListener('scroll', trackViewPosition);
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function resetApp() {
+            rawDataset = [];
+            dataHeaders = [];
+            document.getElementById('file-input').value = "";
+            queueContainer.innerHTML = "";
+            queueContainer.classList.add('hidden');
+            mapperContainer.classList.add('hidden');
+            stickyHeader.classList.add('hidden');
+            uploadContainer.classList.remove('hidden');
+            if(isMobileSimulated) toggleViewMode();
+        }
+    </script>
+</body>
+</html>
