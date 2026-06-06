@@ -115,6 +115,62 @@ def get_sheet(spreadsheet_id, sheet_name):
     gc = _get_gc()
     return gc.open_by_key(spreadsheet_id).worksheet(sheet_name)
 
+# def send_images_to_telegram(title, q_images, s_images):
+#     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+#         return
+
+#     all_images = q_images + s_images
+#     if not all_images:
+#         return
+
+
+
+#     # --- YOUR NEW SUFFIX LOGIC ---
+#     if q_images and s_images:
+#         display_title = f"{title} (Qs + Soln)"
+#     elif q_images:
+#         display_title = f"{title} (Qs)"
+#     elif s_images:
+#         display_title = f"{title} (Soln)"
+#     else:
+#         display_title = title
+#     # -----------------------------
+
+
+    
+
+#     files = {}
+#     media = []
+
+#     for i, b64_str in enumerate(all_images):
+#         if b64_str.startswith("data:image"):
+#             b64_str = b64_str.split(",")[1]
+
+#         image_bytes = base64.b64decode(b64_str)
+#         file_name = f"image_{i}.jpg"
+#         files[file_name] = (file_name, image_bytes, "image/jpeg")
+
+#         media_item = {"type": "photo", "media": f"attach://{file_name}"}
+#         if i == 0:
+#             media_item["caption"] = title
+#         media.append(media_item)
+
+#     if len(all_images) == 1:
+#         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+#         data = {"chat_id": TELEGRAM_CHAT_ID, "caption": title}
+#         single_file = {"photo": files["image_0.jpg"]}
+#         response = httpx.post(url, data=data, files=single_file, timeout=15.0)
+#         print(f"Telegram Response (Single): {response.text}")
+#     else:
+#         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMediaGroup"
+#         data = {"chat_id": TELEGRAM_CHAT_ID, "media": json.dumps(media)}
+#         response = httpx.post(url, data=data, files=files, timeout=30.0)
+#         print(f"Telegram Response (Multi): {response.text}")
+
+
+
+
+
 def send_images_to_telegram(title, q_images, s_images):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
@@ -122,6 +178,17 @@ def send_images_to_telegram(title, q_images, s_images):
     all_images = q_images + s_images
     if not all_images:
         return
+
+    # --- YOUR NEW SUFFIX LOGIC ---
+    if q_images and s_images:
+        display_title = f"{title} (Qs + Soln)"
+    elif q_images:
+        display_title = f"{title} (Qs)"
+    elif s_images:
+        display_title = f"{title} (Soln)"
+    else:
+        display_title = title
+    # -----------------------------
 
     files = {}
     media = []
@@ -135,21 +202,31 @@ def send_images_to_telegram(title, q_images, s_images):
         files[file_name] = (file_name, image_bytes, "image/jpeg")
 
         media_item = {"type": "photo", "media": f"attach://{file_name}"}
+        
+        # We attach your new display_title to the first image in the group
         if i == 0:
-            media_item["caption"] = title
+            media_item["caption"] = display_title
+            
         media.append(media_item)
 
     if len(all_images) == 1:
+        # Single image logic
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-        data = {"chat_id": TELEGRAM_CHAT_ID, "caption": title}
+        data = {"chat_id": TELEGRAM_CHAT_ID, "caption": display_title}
         single_file = {"photo": files["image_0.jpg"]}
         response = httpx.post(url, data=data, files=single_file, timeout=15.0)
         print(f"Telegram Response (Single): {response.text}")
+
     else:
+        # Multiple images logic
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMediaGroup"
         data = {"chat_id": TELEGRAM_CHAT_ID, "media": json.dumps(media)}
         response = httpx.post(url, data=data, files=files, timeout=30.0)
         print(f"Telegram Response (Multi): {response.text}")
+
+
+
+
 
 # ---------------------------------------------------------------------------
 # extract_question
