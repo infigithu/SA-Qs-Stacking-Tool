@@ -516,24 +516,43 @@ def fix():
         question = data.get('question', {})
         fix_prompt = data.get('fix_prompt', '')
 
-        prompt = f"""You are a JEE Advanced content editor. Fix the following question data based on the user's request.
+#         prompt = f"""You are a JEE Advanced content editor. Fix the following question data based on the user's request.
+
+# User request: {fix_prompt}
+
+# Current data:
+# Statement: {question.get('statement', '')}
+# Solution: {question.get('solution', '')}
+# Hint: {question.get('hint', '')}
+# Title: {question.get('title', '')}
+
+# FORMATTING RULES:
+# - Use $...$ for inline math ONLY
+# - Use $$...$$ for display equations, ONE per block, single line only
+# - NEVER use aligned, gather, array, cases, multiline environments
+# - Solution max 8-10 lines
+
+# Return ONLY the updated full JSON object with same structure, no markdown fences:
+# {json.dumps(question, indent=2)}"""
+
+
+
+
+            prompt = f"""You are a precise JSON data editor. Your ONLY job is to apply the user's specific request to the provided data.
 
 User request: {fix_prompt}
 
+CRITICAL RULES:
+1. STRICT PRESERVATION: You MUST keep the exact wording, length, formatting, line breaks, and LaTeX syntax of the original data for ANY field not mentioned in the user's request.
+2. DO NOT SHORTEN: Never reduce the length of the solution or rewrite it unless the user explicitly asks you to.
+3. TARGETED FIX ONLY: If the user says "fix the hint", you ONLY change the hint. Do not alter the statement, solution, or options.
+
 Current data:
-Statement: {question.get('statement', '')}
-Solution: {question.get('solution', '')}
-Hint: {question.get('hint', '')}
-Title: {question.get('title', '')}
+{json.dumps(question, indent=2)}
 
-FORMATTING RULES:
-- Use $...$ for inline math ONLY
-- Use $$...$$ for display equations, ONE per block, single line only
-- NEVER use aligned, gather, array, cases, multiline environments
-- Solution max 8-10 lines
+Return the updated full JSON object with the exact same structure."""
 
-Return ONLY the updated full JSON object with same structure, no markdown fences:
-{json.dumps(question, indent=2)}"""
+
 
         response = anthropic_client.messages.create(
             model="claude-haiku-4-5-20251001",
