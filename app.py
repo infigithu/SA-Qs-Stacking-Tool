@@ -538,7 +538,7 @@ def fix():
 
 
 
-            prompt = f"""You are a precise JSON data editor. Your ONLY job is to apply the user's specific request to the provided data.
+        prompt = f"""You are a precise JSON data editor. Your ONLY job is to apply the user's specific request to the provided data.
 
 User request: {fix_prompt}
 
