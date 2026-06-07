@@ -380,7 +380,17 @@ function renderResults() {
         <div style="margin-top:8px"><button class="btn btn-sm" onclick="retryBox(${box.id})">Retry</button></div>
       `;
     } else {
-      const options = q.options || [];
+      // const options = q.options || [];
+
+      let options = q.options || [];
+      if (typeof options === 'string') {
+          try {
+              options = JSON.parse(options);
+          } catch (e) {
+              options = [];
+          }
+      }
+      
       const optionsHtml = options.length > 0 ? options.map(o => `
         <div style="font-size:13px;padding:4px 0;color:${o.is_correct?'#085041':'#111'}">
           ${o.is_correct ? '✓' : '○'} <strong>${o.label}.</strong> ${o.text}
