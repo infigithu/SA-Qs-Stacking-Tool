@@ -410,10 +410,10 @@ CRITICAL: Your response must be valid JSON. All backslashes in LaTeX must be dou
 Return ONLY raw JSON, no markdown fences:
 {{
   "title": "...",
-  "subject": "Mathematics or Physics or Chemistry",
+  "subject": "MATH or PHYSICS or Chemistry",
   "chapter_title": "must match chapter list",
   "type": "{q_type}",
-  "level": "Easy or Medium or Hard or Elite",
+  "level": "Easy or Medium or Hard",
   "max_xp": <3-13>,
   "statement": "Rewrite the question in fresh English phrasing while strictly preserving the visual alignment and line breaks of the original image. All math MUST be in inline LaTeX using $...$ format. Display equations must be wrapped in $$ placed on separate lines.",
   "solution": "solution with ONLY formatting fixed",
