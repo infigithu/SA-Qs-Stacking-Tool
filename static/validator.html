@@ -561,8 +561,6 @@
 
 
 
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -680,23 +678,17 @@ Return only the corrected JSON object/array.
 Do not include explanations, comments, markdown, or code fences.
 If a value is ambiguous, make the minimal correction required to produce valid JSON.`;
 
-        const PROMPT_QS_SOL = `Task: Reformat the provided content without changing any words, symbols, equations, LaTeX commands, or mathematical meaning.
-Input Format: Markdown containing LaTeX expressions written with dollar-sign notation ($...$ and $$...$$).
+        const PROMPT_QS_SOL = `Task: Reformat and repair LaTeX/Markdown syntax formatting rules across the provided engineering text blocks without modifying target numbers, variable identifiers, or structural mathematical meaning.
+Input Format: Raw Markdown text arrays containing complex mathematical equations written with standard inline notations ($...$, \\(...\\)) or explicit structural display blocks ($$...$$, \\[...\\]).
 Requirements:
-Preserve the original content exactly.
-Fix all formatting, alignment, spacing, and line-break issues.
-Ensure Markdown and LaTeX are properly structured and readable.
-Do not rewrite, simplify, correct, or modify any mathematical expressions.
-Do not add, remove, or alter text, variables, numbers, operators, or LaTeX commands.
-When a visible gap or line break is needed between two expressions, insert:
+Preserve all text data, numeric measurements, metrics, constraints, and formulas exactly.
+Fix structural syntax validation crashes including missing/unclosed dollar signs, dangling delimiters, or corrupted mathematical operators.
+Fix broken structural alignment matrices, multi-line array paths, spacing parameters, and unreadable break items to protect clean screen parsing outputs.
+Do not change, simplify, rewrite, calculate, or alter equations or logic workflows.
+When empty visual layout gaps or distinct breaks are required between formulas or logic boundaries, insert:
 $$ $$
-This empty display-math block must be used only to create spacing between expressions or sections.
-Preserve all existing display-math blocks and inline-math expressions.
-Maintain consistent indentation and line spacing throughout the document.
-Output only the corrected Markdown + LaTeX content.
-Do not include explanations, comments, code fences, or any additional text.
-Output Rule:
-Return the reformatted Markdown + LaTeX document with formatting issues fixed while keeping the original content unchanged. Use $$ $$ whenever additional vertical spacing is required between expressions, lines, or sections.`;
+Return only the corrected Markdown + LaTeX content string data output rules securely.
+Do not include conversational explanations, debug feedback, notes, comments, or layout code fences (\`\`\`markdown or \`\`\`).`;
 
         let rawDataset = [];
         let dataHeaders = [];
@@ -825,12 +817,14 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
             btn.disabled = true;
 
             try {
-                const responseContent = await callChatGPT(systemPrompt, contentToFix);
+                let responseContent = await callChatGPT(systemPrompt, contentToFix);
                 
-                // Update the state array directly
-                rawDataset[index][targetKey] = responseContent;
+                // Sanitize accidental markdown block wrapper fences returned by the LLM
+                if (responseContent.trim().startsWith('```')) {
+                    responseContent = responseContent.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '');
+                }
                 
-                // Pure state refresh without reading stale DOM elements
+                rawDataset[index][targetKey] = responseContent.trim();
                 refreshCardView(index);
             } catch (error) {
                 console.error(error);
@@ -1073,7 +1067,6 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
             const cKey = queueContainer.getAttribute('data-ckey');
             const sKey = queueContainer.getAttribute('data-skey');
 
-            // Save unconditionally from form inputs to state array
             rawDataset[index][tKey] = card.querySelector('.edit-t').value;
             rawDataset[index][lKey] = card.querySelector('.edit-l').value;
             rawDataset[index][qKey] = card.querySelector('.edit-q').value;
@@ -1107,16 +1100,12 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
             renderMathInElement(card, {
                 delimiters: [
                     {left: '$$', right: '$$', display: true},
-                    {left: '$', right: '$', display: false}
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
                 ],
                 throwOnError: false
             });
-
-            // Automatically open block after an automated modification or user save
-            card.querySelector('.hidden-review-block').classList.remove('hidden');
-            const btns = card.querySelectorAll('button');
-            const btn = Array.from(btns).find(b => b.textContent.includes('Reveal') || b.textContent.includes('Hide'));
-            if (btn) btn.textContent = "🙈 Hide";
         }
 
         function exitEditMode(index, saveChanges) {
@@ -1146,7 +1135,9 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
             renderMathInElement(queueContainer, {
                 delimiters: [
                     {left: '$$', right: '$$', display: true},
-                    {left: '$', right: '$', display: false}
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
                 ],
                 throwOnError: false
             });
