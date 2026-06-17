@@ -566,6 +566,9 @@ def index():
 
 
 # ---------------------------------------------------------
+@app.route('/validator')
+def validator():
+    return send_from_directory('static', 'validator.html')
 @app.route('/validator-fix', methods=['POST'])
 def validator_fix():
     try:
