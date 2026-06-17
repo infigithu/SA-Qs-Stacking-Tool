@@ -563,9 +563,6 @@
 
 
 
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -669,8 +666,6 @@
     </main>
 
     <script>
-        
-
         const PROMPT_OPTIONS = `Requirements:
 Ensure the output is valid JSON.
 Fix all syntax errors, including:
@@ -724,7 +719,6 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
         });
         fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) processCSVFile(e.target.files[0]); });
 
-        // Close dropdowns if clicking outside
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.fix-dropdown-container')) {
                 document.querySelectorAll('.ai-fix-menu').forEach(menu => menu.classList.add('hidden'));
@@ -787,7 +781,6 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
         }
 
         function toggleFixDropdown(index) {
-            // Close all others first
             document.querySelectorAll('.ai-fix-menu').forEach(menu => {
                 if (menu.id !== `fix-menu-${index}`) menu.classList.add('hidden');
             });
@@ -834,11 +827,11 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
             try {
                 const responseContent = await callChatGPT(systemPrompt, contentToFix);
                 
-                // Update the raw dataset with the cleaned response
+                // Update the state array directly
                 rawDataset[index][targetKey] = responseContent;
                 
-                // Refresh the specific card to show the updated data
-                exitEditMode(index, true);
+                // Pure state refresh without reading stale DOM elements
+                refreshCardView(index);
             } catch (error) {
                 console.error(error);
                 alert("Failed to fix LaTeX via API. Check console for details.");
@@ -848,8 +841,6 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
             }
         }
 
-        // Standardized fetch wrapper for ChatGPT Completion
-        // Standardized fetch wrapper that securely calls your Python backend
         async function callChatGPT(systemPrompt, userContent) {
             const response = await fetch('/validator-fix', {
                 method: 'POST',
@@ -1055,7 +1046,6 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
         function toggleCardVisibility(index) {
             const card = document.getElementById(`item-card-${index}`);
             const block = card.querySelector('.hidden-review-block');
-            // We use querySelectorAll to specifically target the reveal button (ignoring the Fix button)
             const btns = card.querySelectorAll('button');
             const btn = Array.from(btns).find(b => b.textContent.includes('Reveal') || b.textContent.includes('Hide'));
 
@@ -1074,57 +1064,66 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
             card.querySelector('.edit-state').classList.remove('hidden');
         }
 
-        function exitEditMode(index, saveChanges) {
+        function saveCardEdits(index) {
             const card = document.getElementById(`item-card-${index}`);
-            
+            const tKey = queueContainer.getAttribute('data-tkey');
+            const lKey = queueContainer.getAttribute('data-lkey');
+            const qKey = queueContainer.getAttribute('data-qkey');
+            const oKey = queueContainer.getAttribute('data-okey');
+            const cKey = queueContainer.getAttribute('data-ckey');
+            const sKey = queueContainer.getAttribute('data-skey');
+
+            // Save unconditionally from form inputs to state array
+            rawDataset[index][tKey] = card.querySelector('.edit-t').value;
+            rawDataset[index][lKey] = card.querySelector('.edit-l').value;
+            rawDataset[index][qKey] = card.querySelector('.edit-q').value;
+            rawDataset[index][oKey] = card.querySelector('.edit-o').value;
+            rawDataset[index][cKey] = card.querySelector('.edit-c').value;
+            rawDataset[index][sKey] = card.querySelector('.edit-s').value;
+
+            refreshCardView(index);
+        }
+
+        function refreshCardView(index) {
+            const card = document.getElementById(`item-card-${index}`);
+            const tKey = queueContainer.getAttribute('data-tkey');
+            const lKey = queueContainer.getAttribute('data-lkey');
+            const qKey = queueContainer.getAttribute('data-qkey');
+            const oKey = queueContainer.getAttribute('data-okey');
+            const cKey = queueContainer.getAttribute('data-ckey');
+            const sKey = queueContainer.getAttribute('data-skey');
+
+            const updatedTitle = rawDataset[index][tKey] || '';
+            const updatedLevel = rawDataset[index][lKey] || '';
+            const updatedQuestion = rawDataset[index][qKey] || '';
+            const updatedOptions = rawDataset[index][oKey] || '';
+            const updatedCorrect = rawDataset[index][cKey] || '';
+            const updatedSolution = rawDataset[index][sKey] || '';
+
+            const isQuestionIntegerType = checkIsIntegerType(updatedOptions, updatedCorrect);
+
+            card.innerHTML = buildCardHTML(index, updatedTitle, updatedLevel, updatedQuestion, updatedOptions, updatedCorrect, updatedSolution, isQuestionIntegerType);
+
+            renderMathInElement(card, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });
+
+            // Automatically open block after an automated modification or user save
+            card.querySelector('.hidden-review-block').classList.remove('hidden');
+            const btns = card.querySelectorAll('button');
+            const btn = Array.from(btns).find(b => b.textContent.includes('Reveal') || b.textContent.includes('Hide'));
+            if (btn) btn.textContent = "🙈 Hide";
+        }
+
+        function exitEditMode(index, saveChanges) {
             if (saveChanges) {
-                const tKey = queueContainer.getAttribute('data-tkey');
-                const lKey = queueContainer.getAttribute('data-lkey');
-                const qKey = queueContainer.getAttribute('data-qkey');
-                const oKey = queueContainer.getAttribute('data-okey');
-                const cKey = queueContainer.getAttribute('data-ckey');
-                const sKey = queueContainer.getAttribute('data-skey');
-
-                // Read structural changes out of modified input boxes if they exist
-                // If it's being called from AI fix, inputs might not have the newest data yet,
-                // so we prioritize the rawDataset unless the user clicked 'Save Changes & Refresh' from UI
-                const qInput = card.querySelector('.edit-q');
-                if (qInput && qInput.value !== rawDataset[index][qKey]) {
-                    rawDataset[index][tKey] = card.querySelector('.edit-t').value;
-                    rawDataset[index][lKey] = card.querySelector('.edit-l').value;
-                    rawDataset[index][qKey] = card.querySelector('.edit-q').value;
-                    rawDataset[index][oKey] = card.querySelector('.edit-o').value;
-                    rawDataset[index][cKey] = card.querySelector('.edit-c').value;
-                    rawDataset[index][sKey] = card.querySelector('.edit-s').value;
-                }
-
-                const updatedTitle = rawDataset[index][tKey];
-                const updatedLevel = rawDataset[index][lKey];
-                const updatedQuestion = rawDataset[index][qKey];
-                const updatedOptions = rawDataset[index][oKey];
-                const updatedCorrect = rawDataset[index][cKey];
-                const updatedSolution = rawDataset[index][sKey];
-
-                const isQuestionIntegerType = checkIsIntegerType(updatedOptions, updatedCorrect);
-
-                card.innerHTML = buildCardHTML(index, updatedTitle, updatedLevel, updatedQuestion, updatedOptions, updatedCorrect, updatedSolution, isQuestionIntegerType);
-
-                // Re-evaluate localized mathematical typesetting bounds over the targeted card structure
-                renderMathInElement(card, {
-                    delimiters: [
-                        {left: '$$', right: '$$', display: true},
-                        {left: '$', right: '$', display: false}
-                    ],
-                    throwOnError: false
-                });
-
-                // Auto reveal if we just returned from an AI fix or edit to show the change
-                card.querySelector('.hidden-review-block').classList.remove('hidden');
-                const btns = card.querySelectorAll('button');
-                const btn = Array.from(btns).find(b => b.textContent.includes('Reveal') || b.textContent.includes('Hide'));
-                if (btn) btn.textContent = "🙈 Hide";
-
+                saveCardEdits(index);
             } else {
+                const card = document.getElementById(`item-card-${index}`);
                 card.querySelector('.edit-state').classList.add('hidden');
                 card.querySelector('.view-state').classList.remove('hidden');
             }
