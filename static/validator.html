@@ -669,10 +669,7 @@
     </main>
 
     <script>
-        // ==========================================
-        // ADD YOUR OPENAI API KEY HERE
-        // ==========================================
-        const OPENAI_API_KEY = "OPENAI_API_KEY";
+        
 
         const PROMPT_OPTIONS = `Requirements:
 Ensure the output is valid JSON.
@@ -852,30 +849,26 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
         }
 
         // Standardized fetch wrapper for ChatGPT Completion
+        // Standardized fetch wrapper that securely calls your Python backend
         async function callChatGPT(systemPrompt, userContent) {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            const response = await fetch('/validator-fix', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${OPENAI_API_KEY}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: "gpt-4o", // or "gpt-3.5-turbo" depending on your preference
-                    messages: [
-                        { role: "system", content: systemPrompt },
-                        { role: "user", content: userContent }
-                    ],
-                    temperature: 0.2
+                    system_prompt: systemPrompt,
+                    user_content: userContent
                 })
             });
 
             if (!response.ok) {
                 const errorBody = await response.json();
-                throw new Error(errorBody.error?.message || "API Error");
+                throw new Error(errorBody.error || "Server Error");
             }
 
             const data = await response.json();
-            return data.choices[0].message.content.trim();
+            return data.fixed_content;
         }
 
         function generateVisualQueue() {
