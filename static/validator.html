@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -483,6 +483,654 @@
                     ],
                     throwOnError: false
                 });
+            } else {
+                card.querySelector('.edit-state').classList.add('hidden');
+                card.querySelector('.view-state').classList.remove('hidden');
+            }
+        }
+
+        function exportUpdatedCSV() {
+            if(rawDataset.length === 0) return;
+            const updatedCSV = Papa.unparse(rawDataset);
+            const blob = new Blob([updatedCSV], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", "Verified_Questions_Export.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function triggerLatexEngine() {
+            renderMathInElement(queueContainer, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });
+        }
+
+        function trackViewPosition() {
+            const cards = document.querySelectorAll('.queue-card');
+            if(cards.length === 0) return;
+            let currentItem = 1;
+            let minDistance = Infinity;
+
+            cards.forEach(card => {
+                const rect = card.getBoundingClientRect();
+                const targetDistance = Math.abs(rect.top - 80);
+                if (targetDistance < minDistance) {
+                    minDistance = targetDistance;
+                    currentItem = card.getAttribute('data-index');
+                }
+            });
+            document.getElementById('header-counter').textContent = `Qs ${currentItem} of ${cards.length}`;
+        }
+
+        window.addEventListener('scroll', trackViewPosition);
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function resetApp() {
+            rawDataset = [];
+            dataHeaders = [];
+            document.getElementById('file-input').value = "";
+            queueContainer.innerHTML = "";
+            queueContainer.classList.add('hidden');
+            mapperContainer.classList.add('hidden');
+            stickyHeader.classList.add('hidden');
+            uploadContainer.classList.remove('hidden');
+            if(isMobileSimulated) toggleViewMode();
+        }
+    </script>
+</body>
+</html> -->
+
+
+
+
+
+
+
+
+<!-- -------------------------------------------------------------------------------- -->
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile App LaTeX & Markdown QA Validator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        html { scroll-behavior: smooth; }
+        .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; margin: 0.5em 0; }
+        .latex-content img { max-width: 100%; height: auto; border-radius: 8px; }
+        .latex-content p { margin-bottom: 0.5rem; }
+        .latex-content ul { list-style-type: disc; margin-left: 1.25rem; margin-bottom: 0.5rem; }
+        .latex-content ol { list-style-type: decimal; margin-left: 1.25rem; margin-bottom: 0.5rem; }
+        /* Mobile Simulator Screen Styles */
+        .mobile-mode { max-width: 412px !important; margin: 80px auto 24px auto !important; padding: 0 12px !important; }
+        .mobile-mode .queue-card { padding: 16px !important; border-radius: 12px !important; font-size: 14px !important; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col pt-16">
+
+    <header id="sticky-header" class="hidden fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2 shrink-0">
+                <span class="font-bold text-slate-900 text-sm hidden sm:inline">Mobile QA Engine</span>
+                <span id="header-counter" class="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">Qs 1 of 0</span>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <button id="toggle-view-mode" onclick="toggleViewMode()" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-lg transition">
+                    📱 Simulate Mobile App Screen
+                </button>
+                <button id="export-csv-btn" onclick="exportUpdatedCSV()" class="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition shadow-sm">
+                    📥 Download Fixed CSV
+                </button>
+                <button onclick="resetApp()" class="px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content-layout" class="flex-grow max-w-4xl w-full mx-auto p-4 transition-all duration-300">
+        
+        <div id="upload-container" class="mt-12">
+            <div class="text-center max-w-xl mx-auto mb-8">
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight">Mobile Application LaTeX Sandbox</h1>
+                <p class="mt-2 text-xs text-slate-500">Formats text arrays via Markdown rendering, structural JSON extraction, and client-side validation loops.</p>
+            </div>
+            <div id="drop-zone" class="border-2 border-dashed border-slate-300 bg-white rounded-xl p-12 text-center cursor-pointer hover:border-indigo-500 transition shadow-xs">
+                <input type="file" id="file-input" accept=".csv" class="hidden">
+                <p class="text-sm font-semibold text-slate-700">Drag & drop standard test-export CSV files</p>
+                <p class="text-xs text-slate-400 mt-1">Parses Statement, Title, Options JSON, Correct Answers, and Solutions</p>
+            </div>
+        </div>
+
+        <div id="mapper-container" class="hidden bg-white border border-slate-200 rounded-xl p-6 shadow-sm mt-6">
+            <h2 class="text-base font-bold text-slate-900 mb-2">Validate Target Variable Mappings</h2>
+            <p class="text-xs text-slate-500 mb-4">Confirm column headers to direct values into the rendering loops securely.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Question Title Source</label>
+                    <select id="map-title" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Difficulty Level Badge Source</label>
+                    <select id="map-level" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Question/Statement Body Text</label>
+                    <select id="map-question" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Options Data (JSON String or Array)</label>
+                    <select id="map-options" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Correct Answer Output (JSON or Numerical Integer Target)</label>
+                    <select id="map-correct" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Solutions / Step Derivations</label>
+                    <select id="map-solution" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-indigo-500"></select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="generateVisualQueue()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg shadow-xs transition">
+                    Construct Compilation Queue
+                </button>
+            </div>
+        </div>
+
+        <div id="queue-container" class="hidden space-y-6 mt-4 mb-24"></div>
+
+    </main>
+
+    <script>
+        // ==========================================
+        // ADD YOUR OPENAI API KEY HERE
+        // ==========================================
+        const OPENAI_API_KEY = "sk-proj-YOUR_ACTUAL_API_KEY_HERE";
+
+        const PROMPT_OPTIONS = `Requirements:
+Ensure the output is valid JSON.
+Fix all syntax errors, including:
+Missing or extra commas
+Missing or mismatched brackets/braces
+Incorrect quotation marks
+Invalid key/value formatting
+Trailing commas
+Preserve the original data and values whenever possible.
+Do not change the meaning of the content.
+Return only the corrected JSON object/array.
+Do not include explanations, comments, markdown, or code fences.
+If a value is ambiguous, make the minimal correction required to produce valid JSON.`;
+
+        const PROMPT_QS_SOL = `Task: Reformat the provided content without changing any words, symbols, equations, LaTeX commands, or mathematical meaning.
+Input Format: Markdown containing LaTeX expressions written with dollar-sign notation ($...$ and $$...$$).
+Requirements:
+Preserve the original content exactly.
+Fix all formatting, alignment, spacing, and line-break issues.
+Ensure Markdown and LaTeX are properly structured and readable.
+Do not rewrite, simplify, correct, or modify any mathematical expressions.
+Do not add, remove, or alter text, variables, numbers, operators, or LaTeX commands.
+When a visible gap or line break is needed between two expressions, insert:
+$$ $$
+This empty display-math block must be used only to create spacing between expressions or sections.
+Preserve all existing display-math blocks and inline-math expressions.
+Maintain consistent indentation and line spacing throughout the document.
+Output only the corrected Markdown + LaTeX content.
+Do not include explanations, comments, code fences, or any additional text.
+Output Rule:
+Return the reformatted Markdown + LaTeX document with formatting issues fixed while keeping the original content unchanged. Use $$ $$ whenever additional vertical spacing is required between expressions, lines, or sections.`;
+
+        let rawDataset = [];
+        let dataHeaders = [];
+        let isMobileSimulated = false;
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadContainer = document.getElementById('upload-container');
+        const mapperContainer = document.getElementById('mapper-container');
+        const queueContainer = document.getElementById('queue-container');
+        const stickyHeader = document.getElementById('sticky-header');
+        const mainLayout = document.getElementById('main-content-layout');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files.length > 0) processCSVFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) processCSVFile(e.target.files[0]); });
+
+        // Close dropdowns if clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.fix-dropdown-container')) {
+                document.querySelectorAll('.ai-fix-menu').forEach(menu => menu.classList.add('hidden'));
+            }
+        });
+
+        function processCSVFile(file) {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    rawDataset = results.data;
+                    dataHeaders = results.meta.fields || Object.keys(results.data[0] || {});
+                    
+                    uploadContainer.classList.add('hidden');
+                    mapperContainer.classList.remove('hidden');
+
+                    autoSetMappingDropdowns();
+                }
+            });
+        }
+
+        function autoSetMappingDropdowns() {
+            populateSelector('map-title', dataHeaders, ['title', 'id']);
+            populateSelector('map-level', dataHeaders, ['level', 'difficulty']);
+            populateSelector('map-question', dataHeaders, ['statement', 'question', 'text']);
+            populateSelector('map-options', dataHeaders, ['options', 'choices']);
+            populateSelector('map-correct', dataHeaders, ['correct_answer', 'answer', 'key']);
+            populateSelector('map-solution', dataHeaders, ['solution', 'explain']);
+        }
+
+        function populateSelector(id, items, heuristics) {
+            const el = document.getElementById(id);
+            el.innerHTML = '';
+            let selectedIdx = 0;
+            items.forEach((item, index) => {
+                const opt = document.createElement('option');
+                opt.value = item; opt.textContent = item;
+                el.appendChild(opt);
+                heuristics.forEach(h => { if(item.toLowerCase().includes(h)) selectedIdx = index; });
+            });
+            el.selectedIndex = selectedIdx;
+        }
+
+        function toggleViewMode() {
+            isMobileSimulated = !isMobileSimulated;
+            const btn = document.getElementById('toggle-view-mode');
+            if (isMobileSimulated) {
+                mainLayout.classList.add('mobile-mode');
+                btn.textContent = "💻 Switch to Desktop Mode";
+                btn.classList.replace('text-slate-700', 'text-indigo-700');
+                btn.classList.replace('bg-slate-200', 'bg-indigo-100');
+            } else {
+                mainLayout.classList.remove('mobile-mode');
+                btn.textContent = "📱 Simulate Mobile App Screen";
+                btn.classList.replace('text-indigo-700', 'text-slate-700');
+                btn.classList.replace('bg-indigo-100', 'bg-slate-200');
+            }
+            window.scrollTo(0, window.scrollY + 1);
+        }
+
+        function toggleFixDropdown(index) {
+            // Close all others first
+            document.querySelectorAll('.ai-fix-menu').forEach(menu => {
+                if (menu.id !== `fix-menu-${index}`) menu.classList.add('hidden');
+            });
+            const menu = document.getElementById(`fix-menu-${index}`);
+            menu.classList.toggle('hidden');
+        }
+
+        async function processAIFix(index, type) {
+            const menu = document.getElementById(`fix-menu-${index}`);
+            const btn = document.getElementById(`fix-btn-${index}`);
+            menu.classList.add('hidden');
+
+            const qKey = queueContainer.getAttribute('data-qkey');
+            const oKey = queueContainer.getAttribute('data-okey');
+            const sKey = queueContainer.getAttribute('data-skey');
+
+            let contentToFix = "";
+            let systemPrompt = "";
+            let targetKey = "";
+
+            if (type === 'question') {
+                contentToFix = rawDataset[index][qKey];
+                systemPrompt = PROMPT_QS_SOL;
+                targetKey = qKey;
+            } else if (type === 'options') {
+                contentToFix = rawDataset[index][oKey];
+                systemPrompt = PROMPT_OPTIONS;
+                targetKey = oKey;
+            } else if (type === 'solution') {
+                contentToFix = rawDataset[index][sKey];
+                systemPrompt = PROMPT_QS_SOL;
+                targetKey = sKey;
+            }
+
+            if (!contentToFix || contentToFix.trim() === '') {
+                alert("No content to fix in this section.");
+                return;
+            }
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ <span class='hidden sm:inline'>Fixing...</span>";
+            btn.disabled = true;
+
+            try {
+                const responseContent = await callChatGPT(systemPrompt, contentToFix);
+                
+                // Update the raw dataset with the cleaned response
+                rawDataset[index][targetKey] = responseContent;
+                
+                // Refresh the specific card to show the updated data
+                exitEditMode(index, true);
+            } catch (error) {
+                console.error(error);
+                alert("Failed to fix LaTeX via API. Check console for details.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Standardized fetch wrapper for ChatGPT Completion
+        async function callChatGPT(systemPrompt, userContent) {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${OPENAI_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o", // or "gpt-3.5-turbo" depending on your preference
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userContent }
+                    ],
+                    temperature: 0.2
+                })
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.json();
+                throw new Error(errorBody.error?.message || "API Error");
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content.trim();
+        }
+
+        function generateVisualQueue() {
+            mapperContainer.classList.add('hidden');
+            queueContainer.innerHTML = '';
+            
+            const tKey = document.getElementById('map-title').value;
+            const lKey = document.getElementById('map-level').value;
+            const qKey = document.getElementById('map-question').value;
+            const oKey = document.getElementById('map-options').value;
+            const cKey = document.getElementById('map-correct').value;
+            const sKey = document.getElementById('map-solution').value;
+
+            queueContainer.setAttribute('data-tkey', tKey);
+            queueContainer.setAttribute('data-lkey', lKey);
+            queueContainer.setAttribute('data-qkey', qKey);
+            queueContainer.setAttribute('data-okey', oKey);
+            queueContainer.setAttribute('data-ckey', cKey);
+            queueContainer.setAttribute('data-skey', sKey);
+
+            rawDataset.forEach((row, idx) => {
+                const card = document.createElement('div');
+                card.className = "queue-card bg-white border border-slate-200 rounded-xl p-6 shadow-xs relative transition-all";
+                card.id = `item-card-${idx}`;
+                card.setAttribute('data-index', idx + 1);
+
+                const rawTitle = row[tKey] || 'Untitled Item';
+                const rawLevel = row[lKey] || 'N/A';
+                const rawQuestion = row[qKey] || '';
+                const rawOptions = row[oKey] || '';
+                const rawCorrect = row[cKey] || '';
+                const rawSolution = row[sKey] || '';
+
+                const isQuestionIntegerType = checkIsIntegerType(rawOptions, rawCorrect);
+
+                card.innerHTML = buildCardHTML(idx, rawTitle, rawLevel, rawQuestion, rawOptions, rawCorrect, rawSolution, isQuestionIntegerType);
+                queueContainer.appendChild(card);
+            });
+
+            triggerLatexEngine();
+            queueContainer.classList.remove('hidden');
+            stickyHeader.classList.remove('hidden');
+            trackViewPosition();
+        }
+
+        function buildCardHTML(index, title, level, question, options, correct, solution, isInteger) {
+            return `
+                <div class="view-state space-y-4">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-100 gap-2">
+                        <div class="flex items-center space-x-2 truncate">
+                            <span class="bg-slate-900 text-white text-[11px] font-black px-2 py-0.5 rounded shrink-0">Qs ${index + 1}</span>
+                            <span class="text-xs font-bold text-slate-700 truncate" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+                        </div>
+                        <div class="flex items-center space-x-3 shrink-0">
+                            <div class="relative fix-dropdown-container">
+                                <button onclick="toggleFixDropdown(${index})" id="fix-btn-${index}" class="text-xs font-bold text-blue-600 hover:text-blue-800 transition">🪄 Fix</button>
+                                <div id="fix-menu-${index}" class="ai-fix-menu hidden absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg border border-slate-200 z-10 py-1">
+                                    <button onclick="processAIFix(${index}, 'question')" class="block w-full text-left px-4 py-2 text-xs hover:bg-slate-50 text-slate-700">Fix Question</button>
+                                    <button onclick="processAIFix(${index}, 'options')" class="block w-full text-left px-4 py-2 text-xs hover:bg-slate-50 text-slate-700">Fix Options</button>
+                                    <button onclick="processAIFix(${index}, 'solution')" class="block w-full text-left px-4 py-2 text-xs hover:bg-slate-50 text-slate-700">Fix Solution</button>
+                                </div>
+                            </div>
+                            <button onclick="toggleCardVisibility(${index})" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition">👁️ Reveal</button>
+                            <button onclick="enterEditMode(${index})" class="text-xs font-bold text-slate-500 hover:text-slate-800 transition">✏️ Edit</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Difficulty: ${escapeHtml(level)}</span>
+                        <div class="latex-content text-slate-900 text-sm leading-relaxed">${renderMarkdownAndLatex(question)}</div>
+                    </div>
+
+                    <div class="hidden-review-block hidden space-y-4 pt-2 border-t border-slate-100">
+                        <div>
+                            <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">
+                                ${isInteger ? 'Integer' : 'Options'}
+                            </span>
+                            ${isInteger ? renderIntegerDisplayBlock(correct) : renderOptionsDisplayBlock(options)}
+                        </div>
+
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <span class="block text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-1">Verified Structural Solution</span>
+                            <div class="latex-content text-slate-700 text-xs leading-relaxed">${renderMarkdownAndLatex(solution)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="edit-state hidden space-y-3 bg-indigo-50/50 p-4 rounded-xl border border-indigo-200 -m-1">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-black text-indigo-900 uppercase">Live Card Correction Workspace</span>
+                        <span class="text-[10px] text-indigo-500 font-medium">Auto-saves to memory states</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Question Title</label>
+                            <input type="text" class="edit-t w-full border border-slate-300 rounded-lg p-2 text-xs focus:outline-indigo-500 bg-white" value="${escapeHtml(title)}">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Difficulty Level</label>
+                            <input type="text" class="edit-l w-full border border-slate-300 rounded-lg p-2 text-xs focus:outline-indigo-500 bg-white" value="${escapeHtml(level)}">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Question Content Block</label>
+                        <textarea class="edit-q w-full border border-slate-300 rounded-lg p-2 text-xs font-mono h-24 focus:outline-indigo-500 bg-white">${escapeHtml(question)}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Options Data (Clear out row entirely if question is Integer type)</label>
+                        <textarea class="edit-o w-full border border-slate-300 rounded-lg p-2 text-xs font-mono h-20 focus:outline-indigo-500 bg-white">${escapeHtml(options)}</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Correct Answer Index / Explicit Integer Target</label>
+                        <input type="text" class="edit-c w-full border border-slate-300 rounded-lg p-2 text-xs font-mono focus:outline-indigo-500 bg-white" value="${escapeHtml(correct)}">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Detailed Solution Matrix</label>
+                        <textarea class="edit-s w-full border border-slate-300 rounded-lg p-2 text-xs font-mono h-24 focus:outline-indigo-500 bg-white">${escapeHtml(solution)}</textarea>
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-2">
+                        <button onclick="exitEditMode(${index}, false)" class="px-3 py-1.5 text-xs font-semibold bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 transition">Cancel</button>
+                        <button onclick="exitEditMode(${index}, true)" class="px-3 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Save Changes & Refresh</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function checkIsIntegerType(optionsRaw, correctRaw) {
+            if (!optionsRaw || optionsRaw.trim() === '' || optionsRaw.trim() === '[]') return true;
+            const trimmedCorrect = String(correctRaw).trim();
+            const isNumericalValue = /^[+-]?\d+(\.\d+)?$/.test(trimmedCorrect);
+            try {
+                const parsed = JSON.parse(optionsRaw);
+                if (Array.isArray(parsed) && parsed.length > 0) return false;
+            } catch(e) {
+                if (isNumericalValue) return true;
+            }
+            return false;
+        }
+
+        function renderMarkdownAndLatex(rawText) {
+            if(!rawText) return `<span class="text-slate-400 italic">Field contains empty string context</span>`;
+            return marked.parse(rawText);
+        }
+
+        function renderIntegerDisplayBlock(correctRaw) {
+            const val = String(correctRaw).trim() || 'N/A';
+            return `
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 inline-flex items-center space-x-2">
+                    <span class="text-xs font-bold text-amber-800">Numerical Target Output:</span>
+                    <span class="font-mono text-sm font-black text-amber-900">${escapeHtml(val)}</span>
+                </div>
+            `;
+        }
+
+        function renderOptionsDisplayBlock(optionsRaw) {
+            try {
+                let parsedOptions = JSON.parse(optionsRaw.trim());
+                if (Array.isArray(parsedOptions)) {
+                    let itemsHtml = parsedOptions.map((opt) => {
+                        let text = typeof opt === 'object' ? (opt.text || JSON.stringify(opt)) : opt;
+                        let isCorrectBadge = opt.is_correct ? `<span class="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded shrink-0">Correct Choice</span>` : '';
+                        let labelPrefix = opt.label ? `<span class="font-bold text-slate-400 pr-1">${opt.label}.</span>` : '';
+                        return `
+                            <div class="flex items-start justify-between gap-2 p-2 bg-white border border-slate-100 rounded-md text-xs">
+                                <div class="latex-content flex-grow">${labelPrefix}${renderMarkdownAndLatex(text)}</div>
+                                ${isCorrectBadge}
+                            </div>
+                        `;
+                    }).join('');
+
+                    return `<div class="space-y-1.5">${itemsHtml}</div>`;
+                }
+            } catch (e) {
+                return `
+                    <div class="bg-red-50 p-3 rounded-lg border border-red-200 text-xs text-red-900">
+                        <span class="block text-[10px] font-black text-red-700 uppercase tracking-wider mb-1">⚠️ Option Structural Crash Error</span>
+                        <div class="bg-white/80 p-2 rounded border border-red-300 font-mono text-[11px] break-all whitespace-pre-wrap">${escapeHtml(optionsRaw)}</div>
+                    </div>
+                `;
+            }
+            return '';
+        }
+
+        function toggleCardVisibility(index) {
+            const card = document.getElementById(`item-card-${index}`);
+            const block = card.querySelector('.hidden-review-block');
+            // We use querySelectorAll to specifically target the reveal button (ignoring the Fix button)
+            const btns = card.querySelectorAll('button');
+            const btn = Array.from(btns).find(b => b.textContent.includes('Reveal') || b.textContent.includes('Hide'));
+
+            if(block.classList.contains('hidden')) {
+                block.classList.remove('hidden');
+                btn.textContent = "🙈 Hide";
+            } else {
+                block.classList.add('hidden');
+                btn.textContent = "👁️ Reveal";
+            }
+        }
+
+        function enterEditMode(index) {
+            const card = document.getElementById(`item-card-${index}`);
+            card.querySelector('.view-state').classList.add('hidden');
+            card.querySelector('.edit-state').classList.remove('hidden');
+        }
+
+        function exitEditMode(index, saveChanges) {
+            const card = document.getElementById(`item-card-${index}`);
+            
+            if (saveChanges) {
+                const tKey = queueContainer.getAttribute('data-tkey');
+                const lKey = queueContainer.getAttribute('data-lkey');
+                const qKey = queueContainer.getAttribute('data-qkey');
+                const oKey = queueContainer.getAttribute('data-okey');
+                const cKey = queueContainer.getAttribute('data-ckey');
+                const sKey = queueContainer.getAttribute('data-skey');
+
+                // Read structural changes out of modified input boxes if they exist
+                // If it's being called from AI fix, inputs might not have the newest data yet,
+                // so we prioritize the rawDataset unless the user clicked 'Save Changes & Refresh' from UI
+                const qInput = card.querySelector('.edit-q');
+                if (qInput && qInput.value !== rawDataset[index][qKey]) {
+                    rawDataset[index][tKey] = card.querySelector('.edit-t').value;
+                    rawDataset[index][lKey] = card.querySelector('.edit-l').value;
+                    rawDataset[index][qKey] = card.querySelector('.edit-q').value;
+                    rawDataset[index][oKey] = card.querySelector('.edit-o').value;
+                    rawDataset[index][cKey] = card.querySelector('.edit-c').value;
+                    rawDataset[index][sKey] = card.querySelector('.edit-s').value;
+                }
+
+                const updatedTitle = rawDataset[index][tKey];
+                const updatedLevel = rawDataset[index][lKey];
+                const updatedQuestion = rawDataset[index][qKey];
+                const updatedOptions = rawDataset[index][oKey];
+                const updatedCorrect = rawDataset[index][cKey];
+                const updatedSolution = rawDataset[index][sKey];
+
+                const isQuestionIntegerType = checkIsIntegerType(updatedOptions, updatedCorrect);
+
+                card.innerHTML = buildCardHTML(index, updatedTitle, updatedLevel, updatedQuestion, updatedOptions, updatedCorrect, updatedSolution, isQuestionIntegerType);
+
+                // Re-evaluate localized mathematical typesetting bounds over the targeted card structure
+                renderMathInElement(card, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ],
+                    throwOnError: false
+                });
+
+                // Auto reveal if we just returned from an AI fix or edit to show the change
+                card.querySelector('.hidden-review-block').classList.remove('hidden');
+                const btns = card.querySelectorAll('button');
+                const btn = Array.from(btns).find(b => b.textContent.includes('Reveal') || b.textContent.includes('Hide'));
+                if (btn) btn.textContent = "🙈 Hide";
+
             } else {
                 card.querySelector('.edit-state').classList.add('hidden');
                 card.querySelector('.view-state').classList.remove('hidden');
