@@ -564,11 +564,35 @@ Correct Answer hint: {correct_answer}"""
 def index():
     return send_from_directory('static', 'index.html')
 
-@app.route('/validator')
-def validator():
-    return send_from_directory('static', 'validator.html')
 
+# ---------------------------------------------------------
+@app.route('/validator-fix', methods=['POST'])
+def validator_fix():
+    try:
+        data = request.json
+        system_prompt = data.get('system_prompt', '')
+        user_content = data.get('user_content', '')
 
+        if not user_content:
+            return jsonify({'error': 'No content provided'}), 400
+
+        # We use your existing openai_client that is already securely authenticated!
+        response = openai_client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0.2,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content}
+            ]
+        )
+        
+        fixed_content = response.choices[0].message.content.strip()
+        return jsonify({'fixed_content': fixed_content})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --------------------------------------------------------
 @app.route('/generate', methods=['POST'])
 def generate():
     try:
