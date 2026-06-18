@@ -275,6 +275,7 @@ input[type=file]{display:none}
 let boxes = [];
 let results = {};
 let boxCounter = 0;
+let figureFiles = {}; 
 
 async function fetchSheets() {
     const sheetId = document.getElementById('spreadsheet_id').value.trim();
@@ -330,6 +331,7 @@ function addBox() {
 function removeBox(id) {
   boxes = boxes.filter(b => b.id !== id);
   delete results[id];
+  delete figureFiles[id];
   renderBoxes();
   renderResults();
   updateCount();
@@ -488,36 +490,94 @@ async function generateBox(box) {
 
 // Re-render figure thumbs inside a result card after files are picked
 function renderFigureThumbs(boxId, kind) {
+  if (!figureFiles[boxId]) {
+    figureFiles[boxId] = { q: [], s: [] };
+  }
+
   const input = document.getElementById(`${kind}-figures-${boxId}`);
   const wrap = document.getElementById(`${kind}-figures-thumbs-${boxId}`);
   const countEl = document.getElementById(`${kind}-figures-count-${boxId}`);
-  if (!input || !wrap) return;
-  const files = Array.from(input.files || []);
-  countEl.textContent = files.length ? `${files.length} file${files.length>1?'s':''}` : '0 files';
+
+  if (!input || !wrap || !countEl) return;
+
+  // Add newly selected files to old files
+  const newlySelected = Array.from(input.files || []);
+  figureFiles[boxId][kind].push(...newlySelected);
+
+  // Clear input so selecting another image later works
+  input.value = '';
+
+  const files = figureFiles[boxId][kind];
+
+  countEl.textContent = files.length
+    ? `${files.length} file${files.length > 1 ? 's' : ''}`
+    : '0 files';
+
   wrap.innerHTML = '';
+
   files.forEach((file, idx) => {
     const reader = new FileReader();
+
     reader.onload = (e) => {
       const div = document.createElement('div');
       div.className = 'thumb-wrap';
       div.innerHTML = `
-        <img class="thumb" src="${e.target.result}" alt="figure ${idx+1}">
-        <button type="button" class="thumb-remove" title="Remove image" aria-label="Remove image" onclick="removeFigureImage(${boxId}, '${kind}', ${idx})">×</button>
+        <img class="thumb" src="${e.target.result}" alt="figure ${idx + 1}">
+        <button 
+          type="button" 
+          class="thumb-remove" 
+          title="Remove image" 
+          aria-label="Remove image" 
+          onclick="removeFigureImage(${boxId}, '${kind}', ${idx})"
+        >×</button>
       `;
       wrap.appendChild(div);
     };
+
     reader.readAsDataURL(file);
   });
 }
 
 // Hover-X removal for a figure image (rebuilds the FileList via DataTransfer)
 function removeFigureImage(boxId, kind, idx) {
-  const input = document.getElementById(`${kind}-figures-${boxId}`);
-  if (!input) return;
-  const dt = new DataTransfer();
-  Array.from(input.files).forEach((file, i) => { if (i !== idx) dt.items.add(file); });
-  input.files = dt.files;
-  renderFigureThumbs(boxId, kind);
+  if (!figureFiles[boxId]) return;
+
+  figureFiles[boxId][kind].splice(idx, 1);
+
+  const wrap = document.getElementById(`${kind}-figures-thumbs-${boxId}`);
+  const countEl = document.getElementById(`${kind}-figures-count-${boxId}`);
+
+  if (!wrap || !countEl) return;
+
+  const files = figureFiles[boxId][kind];
+
+  countEl.textContent = files.length
+    ? `${files.length} file${files.length > 1 ? 's' : ''}`
+    : '0 files';
+
+  wrap.innerHTML = '';
+
+  files.forEach((file, newIdx) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const div = document.createElement('div');
+      div.className = 'thumb-wrap';
+      div.innerHTML = `
+        <img class="thumb" src="${e.target.result}" alt="figure ${newIdx + 1}">
+        <button 
+          type="button" 
+          class="thumb-remove" 
+          title="Remove image" 
+          aria-label="Remove image" 
+          onclick="removeFigureImage(${boxId}, '${kind}', ${newIdx})"
+        >×</button>
+      `;
+      wrap.appendChild(div);
+    };
+
+    reader.readAsDataURL(file);
+  });
 }
 
 function renderResults() {
@@ -740,20 +800,20 @@ async function sendAll() {
       let sImages = [];
 
       if (hasFigures) {
-          const qInput = document.getElementById(`q-figures-${b.id}`);
-          const sInput = document.getElementById(`s-figures-${b.id}`);
+    const storedFigures = figureFiles[b.id] || { q: [], s: [] };
 
-          if (qInput.files.length === 0 && sInput.files.length === 0) {
-              if (errorMsg) errorMsg.classList.add('visible');
-              alert(`Missing figures for Q${b.id}. Please add them or turn off the switch.`);
-              btn.disabled = false;
-              return;
-          }
-          if (errorMsg) errorMsg.classList.remove('visible');
+    if (storedFigures.q.length === 0 && storedFigures.s.length === 0) {
+        if (errorMsg) errorMsg.classList.add('visible');
+        alert(`Missing figures for Q${b.id}. Please add them or turn off the switch.`);
+        btn.disabled = false;
+        return;
+    }
 
-          for (let file of qInput.files) qImages.push(await toBase64(file));
-          for (let file of sInput.files) sImages.push(await toBase64(file));
-      }
+    if (errorMsg) errorMsg.classList.remove('visible');
+
+    for (let file of storedFigures.q) qImages.push(await toBase64(file));
+    for (let file of storedFigures.s) sImages.push(await toBase64(file));
+}
 
       qData.has_figures = hasFigures;
       qData.question_figures = qImages;
