@@ -663,6 +663,40 @@
     </main>
 
     <script>
+//         const PROMPT_OPTIONS = `Requirements:
+// Ensure the output is valid JSON.
+// Fix all syntax errors, including:
+// Missing or extra commas
+// Missing or mismatched brackets/braces
+// Incorrect quotation marks
+// Invalid key/value formatting
+// Trailing commas
+// Preserve the original data and values whenever possible.
+// Do not change the meaning of the content.
+// Return only the corrected JSON object/array.
+// Do not include explanations, comments, markdown, or code fences.
+// If a value is ambiguous, make the minimal correction required to produce valid JSON.`;
+
+//         const PROMPT_QS_SOL = `Task: Reformat the provided content without changing any words, symbols, equations, LaTeX commands, or mathematical meaning.
+// Input Format: Markdown containing LaTeX expressions written with dollar-sign notation ($...$ and $$...$$).
+// Requirements:
+// Preserve the original content exactly.
+// Fix all formatting, alignment, spacing, and line-break issues.
+// Ensure Markdown and LaTeX are properly structured and readable.
+// Do not rewrite, simplify, correct, or modify any mathematical expressions.
+// Do not add, remove, or alter text, variables, numbers, operators, or LaTeX commands.
+// When a visible gap or line break is needed between two expressions, insert:
+// $$ $$
+// This empty display-math block must be used only to create spacing between expressions or sections.
+// Preserve all existing display-math blocks and inline-math expressions.
+// Maintain consistent indentation and line spacing throughout the document.
+// Output only the corrected Markdown + LaTeX content.
+// Do not include explanations, comments, code fences, or any additional text.
+// Output Rule:
+// Return the reformatted Markdown + LaTeX document with formatting issues fixed while keeping the original content unchanged. Use $$ $$ whenever additional vertical spacing is required between expressions, lines, or sections.`;
+
+
+
         const PROMPT_OPTIONS = `Requirements:
 Ensure the output is valid JSON.
 Fix all syntax errors, including:
@@ -677,24 +711,22 @@ Return only the corrected JSON object/array.
 Do not include explanations, comments, markdown, or code fences.
 If a value is ambiguous, make the minimal correction required to produce valid JSON.`;
 
-        const PROMPT_QS_SOL = `Task: Reformat the provided content without changing any words, symbols, equations, LaTeX commands, or mathematical meaning.
-Input Format: Markdown containing LaTeX expressions written with dollar-sign notation ($...$ and $$...$$).
-Requirements:
-Preserve the original content exactly.
-Fix all formatting, alignment, spacing, and line-break issues.
-Ensure Markdown and LaTeX are properly structured and readable.
-Do not rewrite, simplify, correct, or modify any mathematical expressions.
-Do not add, remove, or alter text, variables, numbers, operators, or LaTeX commands.
-When a visible gap or line break is needed between two expressions, insert:
-$$ $$
-This empty display-math block must be used only to create spacing between expressions or sections.
-Preserve all existing display-math blocks and inline-math expressions.
-Maintain consistent indentation and line spacing throughout the document.
-Output only the corrected Markdown + LaTeX content.
-Do not include explanations, comments, code fences, or any additional text.
-Output Rule:
-Return the reformatted Markdown + LaTeX document with formatting issues fixed while keeping the original content unchanged. Use $$ $$ whenever additional vertical spacing is required between expressions, lines, or sections.`;
+const PROMPT_QUESTION = `Task: Repair ONLY the structural LaTeX and Markdown formatting syntax of the given question text.
+CRITICAL LAWS:
+1. DO NOT solve the question. Do NOT add any answers, step-by-step logic, explanations, or derivations.
+2. Preserve the original phrasing, questions, variables, values, and constraints exactly as they are. 
+3. Only fix syntax rendering bugs, such as unclosed single dollar signs ($), broken line breaks, or mismatched delimiters.
+4. Output ONLY the clean, repaired text string. Do not include conversational remarks or wrap the output in markdown code fences (\`\`\`markdown).`;
 
+const PROMPT_SOLUTION = `Task: Reformat and repair LaTeX/Markdown syntax formatting rules across the provided step-by-step solution derivation.
+Requirements:
+1. Preserve all existing mathematical calculations, steps, numbers, and operators exactly.
+2. Fix broken layout alignment parameters, spacing paths, and unclosed math delimiters ($ or $$) so it renders cleanly.
+3. Output ONLY the reformatted Markdown + LaTeX content block. Do not write summary chat dialogue or wrap output in code fences (\`\`\`).`;
+
+
+
+        
         let rawDataset = [];
         let dataHeaders = [];
         let isMobileSimulated = false;
@@ -786,58 +818,60 @@ Return the reformatted Markdown + LaTeX document with formatting issues fixed wh
         }
 
         async function processAIFix(index, type) {
-            const menu = document.getElementById(`fix-menu-${index}`);
-            const btn = document.getElementById(`fix-btn-${index}`);
-            menu.classList.add('hidden');
+    const menu = document.getElementById(`fix-menu-${index}`);
+    const btn = document.getElementById(`fix-btn-${index}`);
+    menu.classList.add('hidden');
 
-            const qKey = queueContainer.getAttribute('data-qkey');
-            const oKey = queueContainer.getAttribute('data-okey');
-            const sKey = queueContainer.getAttribute('data-skey');
+    const qKey = queueContainer.getAttribute('data-qkey');
+    const oKey = queueContainer.getAttribute('data-okey');
+    const sKey = queueContainer.getAttribute('data-skey');
 
-            let contentToFix = "";
-            let systemPrompt = "";
-            let targetKey = "";
+    let contentToFix = "";
+    let systemPrompt = "";
+    let targetKey = "";
 
-            if (type === 'question') {
-                contentToFix = rawDataset[index][qKey];
-                systemPrompt = PROMPT_QS_SOL;
-                targetKey = qKey;
-            } else if (type === 'options') {
-                contentToFix = rawDataset[index][oKey];
-                systemPrompt = PROMPT_OPTIONS;
-                targetKey = oKey;
-            } else if (type === 'solution') {
-                contentToFix = rawDataset[index][sKey];
-                systemPrompt = PROMPT_QS_SOL;
-                targetKey = sKey;
-            }
+    // Strictly direct each button click type to its exact dedicated prompt filter
+    if (type === 'question') {
+        contentToFix = rawDataset[index][qKey];
+        systemPrompt = PROMPT_QUESTION;
+        targetKey = qKey;
+    } else if (type === 'options') {
+        contentToFix = rawDataset[index][oKey];
+        systemPrompt = PROMPT_OPTIONS;
+        targetKey = oKey;
+    } else if (type === 'solution') {
+        contentToFix = rawDataset[index][sKey];
+        systemPrompt = PROMPT_SOLUTION;
+        targetKey = sKey;
+    }
 
-            if (!contentToFix || contentToFix.trim() === '') {
-                alert("No content to fix in this section.");
-                return;
-            }
+    if (!contentToFix || contentToFix.trim() === '') {
+        alert("No content to fix in this section.");
+        return;
+    }
 
-            const originalText = btn.innerHTML;
-            btn.innerHTML = "⏳ <span class='hidden sm:inline'>Fixing...</span>";
-            btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = "⏳ <span class='hidden sm:inline'>Fixing...</span>";
+    btn.disabled = true;
 
-            try {
-                const responseContent = await callChatGPT(systemPrompt, contentToFix);
-                
-                // Update the state array directly
-                rawDataset[index][targetKey] = responseContent;
-                
-                // Pure state refresh without reading stale DOM elements
-                refreshCardView(index);
-            } catch (error) {
-                console.error(error);
-                alert("Failed to fix LaTeX via API. Check console for details.");
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
+    try {
+        let responseContent = await callChatGPT(systemPrompt, contentToFix);
+        
+        // Secondary safety guard to strip any accidental backticks returned by the API
+        if (responseContent.trim().startsWith('```')) {
+            responseContent = responseContent.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '');
         }
-
+        
+        rawDataset[index][targetKey] = responseContent.trim();
+        refreshCardView(index);
+    } catch (error) {
+        console.error(error);
+        alert("Failed to fix LaTeX via API. Check console for details.");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
         async function callChatGPT(systemPrompt, userContent) {
             const response = await fetch('/validator-fix', {
                 method: 'POST',
