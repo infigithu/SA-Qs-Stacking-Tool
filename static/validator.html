@@ -1030,34 +1030,34 @@ Requirements:
             return false;
         }
 
-        // function renderMarkdownAndLatex(rawText) {
-        //     if(!rawText) return `<span class="text-slate-400 italic">Field contains empty string context</span>`;
-        //     return marked.parse(rawText);
-        // }
-
-
         function renderMarkdownAndLatex(rawText) {
             if(!rawText) return `<span class="text-slate-400 italic">Field contains empty string context</span>`;
-            
-            // SIMULATE PLATFORM PARSING BUG:
-            // This replaces valid LaTeX blocks by stripping out one layer of slashes
-            // from your text cells, causing KaTeX to choke on plain keywords like "sin" or "sqrt"
-            // exactly the same way your platform's backend engine breaks.
-            let simulatedBrokenText = rawText
-                .replace(/\\sin/g, 'sin')
-                .replace(/\\sqrt/g, 'sqrt')
-                .replace(/\\frac/g, 'frac')
-                .replace(/\\left/g, '')
-                .replace(/\\right/g, '')
-                .replace(/\\text/g, 'text')
-                .replace(/\\omega/g, 'omega')
-                .replace(/\\times/g, 'times')
-                .replace(/\\approx/g, 'approx')
-                .replace(/\\bar/g, 'bar')
-                .replace(/\\mu/g, 'mu');
-
-            return marked.parse(simulatedBrokenText);
+            return marked.parse(rawText);
         }
+
+
+        // function renderMarkdownAndLatex(rawText) {
+        //     if(!rawText) return `<span class="text-slate-400 italic">Field contains empty string context</span>`;
+            
+        //     // SIMULATE PLATFORM PARSING BUG:
+        //     // This replaces valid LaTeX blocks by stripping out one layer of slashes
+        //     // from your text cells, causing KaTeX to choke on plain keywords like "sin" or "sqrt"
+        //     // exactly the same way your platform's backend engine breaks.
+        //     let simulatedBrokenText = rawText
+        //         .replace(/\\sin/g, 'sin')
+        //         .replace(/\\sqrt/g, 'sqrt')
+        //         .replace(/\\frac/g, 'frac')
+        //         .replace(/\\left/g, '')
+        //         .replace(/\\right/g, '')
+        //         .replace(/\\text/g, 'text')
+        //         .replace(/\\omega/g, 'omega')
+        //         .replace(/\\times/g, 'times')
+        //         .replace(/\\approx/g, 'approx')
+        //         .replace(/\\bar/g, 'bar')
+        //         .replace(/\\mu/g, 'mu');
+
+        //     return marked.parse(simulatedBrokenText);
+        // }
 
         function renderIntegerDisplayBlock(correctRaw) {
             const val = String(correctRaw).trim() || 'N/A';
