@@ -544,8 +544,8 @@ Options: {options}
 Correct Answer hint: {correct_answer}"""
 
     response = anthropic_client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=4096,
+        model="claude-sonnet-4-6",
+        max_tokens=2048,
         tools=GENERATE_TOOL,
         tool_choice={"type": "tool", "name": "return_question_data"},
         messages=[{"role": "user", "content": prompt}],
@@ -659,8 +659,8 @@ Return the updated full JSON object with the exact same structure."""
 
 
         response = anthropic_client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=4096,
+            model="claude-sonnet-4-6",
+            max_tokens=2048,
             tools=FIX_TOOL,
             tool_choice={"type": "tool", "name": "return_question_data"},
             messages=[{"role": "user", "content": prompt}],
@@ -696,7 +696,7 @@ Return ONLY this JSON, no extra text, no markdown:
 {{"correct": true, "explanation": "one line reason"}}"""
 
         response = anthropic_client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-sonnet-4-6",
             max_tokens=256,
             tools=VERIFY_TOOL,
             tool_choice={"type": "tool", "name": "return_verification"},
