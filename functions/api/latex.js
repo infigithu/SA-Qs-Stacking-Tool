@@ -10,7 +10,10 @@ export async function onRequestPost(context) {
     const { expression } = await request.json();
 
     if (!expression || expression.length > 500) {
-      return json({ error: "Expression is required and must be under 500 characters" }, 400);
+      return json(
+        { error: "Expression is required and must be under 500 characters" },
+        400
+      );
     }
 
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
