@@ -711,19 +711,124 @@ Return only the corrected JSON object/array.
 Do not include explanations, comments, markdown, or code fences.
 If a value is ambiguous, make the minimal correction required to produce valid JSON.`;
 
-const PROMPT_QUESTION = `Task: Repair ONLY the structural LaTeX and Markdown formatting syntax of the given question text.
-CRITICAL LAWS:
-1. DO NOT solve the question. Do NOT add any answers, step-by-step logic, explanations, or derivations.
-2. Preserve the original phrasing, questions, variables, values, and constraints exactly as they are. 
-3. Only fix syntax rendering bugs, such as unclosed single dollar signs ($), broken line breaks, or mismatched delimiters.
-4. Output ONLY the clean, repaired text string. Do not include conversational remarks or wrap the output in markdown code fences (\`\`\`markdown).`;
+const PROMPT_QUESTION = `You are a strict LaTeX and Markdown formatter for math questions.
 
-const PROMPT_SOLUTION = `Task: Reformat and repair LaTeX/Markdown syntax formatting rules across the provided step-by-step solution derivation.
-Requirements:
-1. Preserve all existing mathematical calculations, steps, numbers, and operators exactly.
-2. Fix broken layout alignment parameters, spacing paths, and unclosed math delimiters ($ or $$) so it renders cleanly.
-3. Output ONLY the reformatted Markdown + LaTeX content block. Do not write summary chat dialogue or wrap output in code fences (\`\`\`).`;
+Your job:
+Fix only formatting, line breaks, Markdown structure, and LaTeX delimiters.
 
+Do NOT solve the question.
+Do NOT add a solution.
+Do NOT add hints.
+Do NOT change the meaning.
+Do NOT change numbers, variables, equations, conditions, options, or final instruction.
+
+Required formatting style:
+- Use normal text lines for explanation.
+- Put a blank line between every text block and every equation block.
+- Important equations must be written in display math blocks using exactly this format:
+
+$$
+equation here
+$$
+
+- The opening $$ must be on its own line.
+- The equation must be on the next line.
+- The closing $$ must be on its own line.
+- Use $...$ only for very short inline variables or symbols inside a sentence.
+- Convert \\(...\\) to $...$ only when it is truly inline.
+- Convert \\[...\\] to display format with $$ on separate lines.
+- Fix unclosed or mismatched math delimiters.
+- Fix broken LaTeX commands.
+- Do not use markdown code fences.
+- Output only the fixed question text.
+
+Example style:
+
+Let $f(x)$ be defined by
+
+$$
+f(x)=x^2+3x+2
+$$
+
+Find the number of real roots of
+
+$$
+f(x)=0
+$$`;
+
+const PROMPT_SOLUTION = `You are a strict LaTeX and Markdown formatter for math solutions.
+
+Your job:
+Reformat the given solution into clean mobile-readable Markdown + LaTeX.
+
+Do NOT solve again.
+Do NOT add new steps.
+Do NOT remove existing mathematical steps.
+Do NOT change values, variables, equations, operators, conclusions, or final answer.
+Only improve formatting, spacing, line breaks, Markdown structure, and LaTeX delimiters.
+
+Required formatting style:
+- Use short normal text lines for explanation.
+- Put a blank line between every text block and every equation block.
+- Main equations must be written as display math blocks using exactly this format:
+
+$$
+equation here
+$$
+
+- The opening $$ must be on its own line.
+- The equation must be on the next line.
+- The closing $$ must be on its own line.
+- If a derivation has multiple equation steps, each step must be in its own separate display math block.
+- Use $...$ only for short inline expressions inside normal text, such as $n=1$, $0$, or $\alpha\\in(0,2\\pi)$.
+- Convert \\(...\\) to $...$ only when it is truly inline.
+- Convert \\[...\\] to display format with $$ on separate lines.
+- Fix unclosed or mismatched math delimiters.
+- Fix broken LaTeX commands.
+- Do not use bullet points unless the original uses bullet points.
+- Do not use markdown code fences.
+- Output only the reformatted solution.
+
+Preferred example style:
+
+We have
+
+$$
+h_n(x)=\\sum_{k=1}^{n}\\frac{\\sin(kx)}{k+\\cos(kx)}
+$$
+
+First, differentiate a general term:
+
+$$
+\\frac{d}{dx}\\left(\\frac{\\sin(kx)}{k+\\cos(kx)}\\right)
+=
+\\frac{k\\cos(kx)(k+\\cos(kx))+k\\sin^2(kx)}{(k+\\cos(kx))^2}
+$$
+
+$$
+=
+\\frac{k(k\\cos(kx)+1)}{(k+\\cos(kx))^2}
+$$
+
+For $n=1$,
+
+$$
+h_1(x)=\\frac{\\sin x}{1+\\cos x}
+$$
+
+and
+
+$$
+h_1'(x)=\\frac{1}{1+\\cos x}
+$$
+
+This is never equal to $0$ on its domain.
+
+Hence there cannot exist an $\\alpha\\in(0,2\\pi)$ such that $h_n'(\\alpha)=0$ for all $n\\ge 1$.
+
+So statement (A) is incorrect.
+
+Output only the fixed solution in this exact formatting style.`;
 
 
         
@@ -873,25 +978,39 @@ Requirements:
     }
 }
         async function callChatGPT(systemPrompt, userContent) {
-            const response = await fetch('/validator-fix', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    system_prompt: systemPrompt,
-                    user_content: userContent
-                })
-            });
+    const response = await fetch('/validator-fix', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            system_prompt: systemPrompt,
+            user_content: userContent
+        })
+    });
 
-            if (!response.ok) {
-                const errorBody = await response.json();
-                throw new Error(errorBody.error || "Server Error");
-            }
+    const rawText = await response.text();
 
-            const data = await response.json();
-            return data.fixed_content;
-        }
+    let data;
+    try {
+        data = JSON.parse(rawText);
+    } catch (e) {
+        console.error("Non-JSON response from /validator-fix:", rawText);
+        throw new Error("Backend returned non-JSON response");
+    }
+
+    if (!response.ok) {
+        console.error("API error:", data);
+        throw new Error(data.error || "Server Error");
+    }
+
+    if (!data.fixed_content) {
+        console.error("Missing fixed_content:", data);
+        throw new Error("API returned no fixed_content");
+    }
+
+    return data.fixed_content;
+}
 
         function generateVisualQueue() {
             mapperContainer.classList.add('hidden');
