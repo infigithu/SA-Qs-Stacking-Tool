@@ -277,6 +277,23 @@ let results = {};
 let boxCounter = 0;
 let figureFiles = {}; 
 
+
+// ----------------------Claudflare-----------------------
+async function convertToLatex(expression) {
+  const res = await fetch("/api/latex", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ expression }),
+  });
+
+  const data = await res.json();
+  return data.latex;
+}
+
+// ---------------------------------------------------------
+  
 async function fetchSheets() {
     const sheetId = document.getElementById('spreadsheet_id').value.trim();
     if (!sheetId) return alert('Please paste a Spreadsheet ID');
