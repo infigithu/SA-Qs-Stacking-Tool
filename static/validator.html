@@ -600,6 +600,13 @@
                 <button id="export-csv-btn" onclick="exportUpdatedCSV()" class="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition shadow-sm">
                     📥 Download Fixed CSV
                 </button>
+                <button
+                    id="push-sheet-btn"
+                    onclick="pushChangesToSheet()"
+                    class="hidden px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-sm"
+                >
+                    🔁 Make Changes in Sheet
+                </button>
                 <button onclick="resetApp()" class="px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition">
                     Reset
                 </button>
@@ -614,11 +621,48 @@
                 <h1 class="text-2xl font-black text-slate-900 tracking-tight">Mobile Application LaTeX Sandbox</h1>
                 <p class="mt-2 text-xs text-slate-500">Formats text arrays via Markdown rendering, structural JSON extraction, and client-side validation loops.</p>
             </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm max-w-xl mx-auto mb-6">
+                <h2 class="text-sm font-black text-slate-900 mb-2">Load from Google Sheet</h2>
+            
+                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                    Spreadsheet ID or URL
+                </label>
+                <input
+                    id="validator-spreadsheet-id"
+                    type="text"
+                    placeholder="Paste Google Sheet URL or ID"
+                    class="w-full border border-slate-300 rounded-lg p-2 text-xs mb-3"
+                >
+            
+                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">
+                    Sheet name
+                </label>
+                <input
+                    id="validator-sheet-name"
+                    type="text"
+                    value="Sheet1"
+                    class="w-full border border-slate-300 rounded-lg p-2 text-xs mb-3"
+                >
+            
+                <button
+                    onclick="loadValidatorSheet()"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-lg"
+                >
+                    Fetch Sheet Data
+                </button>
+            
+                <p id="sheet-load-status" class="text-xs text-slate-500 mt-2"></p>
+            </div>
+
+            
             <div id="drop-zone" class="border-2 border-dashed border-slate-300 bg-white rounded-xl p-12 text-center cursor-pointer hover:border-indigo-500 transition shadow-xs">
                 <input type="file" id="file-input" accept=".csv" class="hidden">
                 <p class="text-sm font-semibold text-slate-700">Drag & drop standard test-export CSV files</p>
                 <p class="text-xs text-slate-400 mt-1">Parses Statement, Title, Options JSON, Correct Answers, and Solutions</p>
             </div>
+
+            
         </div>
 
         <div id="mapper-container" class="hidden bg-white border border-slate-200 rounded-xl p-6 shadow-sm mt-6">
@@ -836,6 +880,11 @@ Output only the fixed solution in this exact formatting style.`;
         let dataHeaders = [];
         let isMobileSimulated = false;
 
+        let validatorSheetMode = false;
+        let validatorSpreadsheetId = "";
+        let validatorSheetName = "";
+        let originalRowsByNumber = {};
+
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
         const uploadContainer = document.getElementById('upload-container');
@@ -859,6 +908,149 @@ Output only the fixed solution in this exact formatting style.`;
             }
         });
 
+
+
+
+        function extractSpreadsheetId(input) {
+    const value = String(input || "").trim();
+
+    const match = value.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (match) return match[1];
+
+    return value;
+}
+
+function rememberOriginalRows(rows) {
+    originalRowsByNumber = {};
+
+    rows.forEach(row => {
+        if (row.__rowNumber) {
+            originalRowsByNumber[row.__rowNumber] = JSON.stringify(row);
+        }
+    });
+}
+
+function getChangedRowsOnly() {
+    return rawDataset.filter(row => {
+        if (!row.__rowNumber) return false;
+
+        const before = originalRowsByNumber[row.__rowNumber];
+
+        if (!before) return true;
+
+        return JSON.stringify(row) !== before;
+    });
+}
+
+async function loadValidatorSheet() {
+    const input = document.getElementById("validator-spreadsheet-id").value.trim();
+    const sheetName = document.getElementById("validator-sheet-name").value.trim() || "Sheet1";
+    const status = document.getElementById("sheet-load-status");
+
+    const spreadsheetId = extractSpreadsheetId(input);
+
+    if (!spreadsheetId) {
+        alert("Paste a Google Sheet URL or Spreadsheet ID.");
+        return;
+    }
+
+    status.textContent = "Loading sheet data...";
+
+    try {
+        const res = await fetch(
+            `/validator-fetch-sheet?spreadsheet_id=${encodeURIComponent(spreadsheetId)}&sheet_name=${encodeURIComponent(sheetName)}`
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || "Failed to fetch sheet");
+        }
+
+        rawDataset = data.rows || [];
+        dataHeaders = data.headers || [];
+
+        validatorSheetMode = true;
+        validatorSpreadsheetId = spreadsheetId;
+        validatorSheetName = sheetName;
+
+        rememberOriginalRows(rawDataset);
+
+        uploadContainer.classList.add("hidden");
+        mapperContainer.classList.remove("hidden");
+
+        const pushBtn = document.getElementById("push-sheet-btn");
+        if (pushBtn) pushBtn.classList.remove("hidden");
+
+        autoSetMappingDropdowns();
+
+        status.textContent = `Loaded ${rawDataset.length} row(s) from "${sheetName}".`;
+    } catch (error) {
+        console.error(error);
+        status.textContent = "";
+        alert("Sheet load failed: " + error.message);
+    }
+}
+
+async function pushChangesToSheet() {
+    if (!validatorSheetMode) {
+        alert("This data was not loaded from Google Sheets.");
+        return;
+    }
+
+    const changedRows = getChangedRowsOnly();
+
+    if (changedRows.length === 0) {
+        alert("No changes to push.");
+        return;
+    }
+
+    const confirmed = confirm(`Push ${changedRows.length} changed row(s) back to Google Sheet?`);
+    if (!confirmed) return;
+
+    const btn = document.getElementById("push-sheet-btn");
+    const oldText = btn.innerHTML;
+
+    btn.innerHTML = "⏳ Updating...";
+    btn.disabled = true;
+
+    try {
+        const res = await fetch("/validator-update-sheet", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                spreadsheet_id: validatorSpreadsheetId,
+                sheet_name: validatorSheetName,
+                headers: dataHeaders,
+                rows: changedRows,
+            }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || "Failed to update sheet");
+        }
+
+        rememberOriginalRows(rawDataset);
+
+        alert(data.message || "Sheet updated successfully.");
+    } catch (error) {
+        console.error(error);
+        alert("Sheet update failed: " + error.message);
+    } finally {
+        btn.innerHTML = oldText;
+        btn.disabled = false;
+    }
+}
+
+
+
+
+        
+
         function processCSVFile(file) {
             Papa.parse(file, {
                 header: true,
@@ -866,7 +1058,15 @@ Output only the fixed solution in this exact formatting style.`;
                 complete: function(results) {
                     rawDataset = results.data;
                     dataHeaders = results.meta.fields || Object.keys(results.data[0] || {});
+
+                    validatorSheetMode = false;
+                    validatorSpreadsheetId = "";
+                    validatorSheetName = "";
+                    originalRowsByNumber = {};
                     
+                    const pushBtn = document.getElementById("push-sheet-btn");
+                    if (pushBtn) pushBtn.classList.add("hidden");
+                                        
                     uploadContainer.classList.add('hidden');
                     mapperContainer.classList.remove('hidden');
 
