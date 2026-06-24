@@ -751,19 +751,42 @@
 
 
 
-        const PROMPT_OPTIONS = `Requirements:
-Ensure the output is valid JSON.
-Fix all syntax errors, including:
-Missing or extra commas
-Missing or mismatched brackets/braces
-Incorrect quotation marks
-Invalid key/value formatting
-Trailing commas
-Preserve the original data and values whenever possible.
-Do not change the meaning of the content.
-Return only the corrected JSON object/array.
-Do not include explanations, comments, markdown, or code fences.
-If a value is ambiguous, make the minimal correction required to produce valid JSON.`;
+const PROMPT_OPTIONS = `You are a strict JSON formatter for multiple-choice options.
+
+Your job:
+Fix the input so it becomes a valid JSON array of option objects.
+
+Required output format:
+[
+  {"text":"...","is_correct":true},
+  {"text":"...","is_correct":false},
+  {"text":"...","is_correct":false},
+  {"text":"...","is_correct":false}
+]
+
+Rules:
+- Return ONLY a valid JSON array.
+- Do not return an object with keys like "options".
+- Do not include markdown code fences.
+- Do not include explanations or comments.
+- Each option object must contain exactly these keys:
+  1. "text"
+  2. "is_correct"
+- Do not add "label", "id", "value", "answer", or any extra keys.
+- "text" must be a string.
+- "is_correct" must be a boolean true or false, not a string.
+- Preserve the original option text and math meaning.
+- Preserve LaTeX inside $...$.
+- Preserve escaped LaTeX backslashes correctly for JSON, for example \\frac must appear as \\\\frac inside the JSON string.
+- Fix missing commas, extra commas, broken quotes, wrong brackets, and invalid booleans.
+- If the input contains labels like A, B, C, D, remove the labels and keep only the option text.
+- If the input has one correct option, keep exactly one true.
+- If the input has multiple correct options, preserve all correct true values.
+- If correctness is unclear, preserve the original true/false values if present.
+- Do not change numerical values, variables, fractions, units, or equations.
+
+Example output:
+[{"text":"$\\\\frac{8g}{25}$","is_correct":true},{"text":"$\\\\frac{3g}{25}$","is_correct":false},{"text":"$\\\\frac{9}{25}$","is_correct":false},{"text":"$\\\\frac{9}{50}$","is_correct":false}]`;
 
 const PROMPT_QUESTION = `You are a strict LaTeX and Markdown formatter for math questions.
 
@@ -1062,30 +1085,96 @@ async function loadValidatorSheet() {
     }
 }
 
+// async function pushChangesToSheet() {
+//     if (!validatorSheetMode) {
+//         alert("This data was not loaded from Google Sheets.");
+//         return;
+//     }
+
+//     const changedRows = getChangedRowsOnly();
+
+//     if (changedRows.length === 0) {
+//         alert("No changes to push.");
+//         return;
+//     }
+
+//     const confirmed = confirm(`Push ${changedRows.length} changed row(s) back to Google Sheet?`);
+//     if (!confirmed) return;
+
+//     const btn = document.getElementById("push-sheet-btn");
+//     const oldText = btn.innerHTML;
+
+//     btn.innerHTML = "⏳ Updating...";
+//     btn.disabled = true;
+
+//     try {
+//         const res = await fetch("/validator-update-sheet", {
+//             method: "POST",
+//             headers: {
+//                 "Content-Type": "application/json",
+//             },
+//             body: JSON.stringify({
+//                 spreadsheet_id: validatorSpreadsheetId,
+//                 sheet_name: validatorSheetName,
+//                 headers: dataHeaders,
+//                 rows: changedRows,
+//             }),
+//         });
+
+//         const data = await res.json();
+
+//         if (!res.ok) {
+//             throw new Error(data.error || "Failed to update sheet");
+//         }
+
+//         rememberOriginalRows(rawDataset);
+
+//         alert(data.message || "Sheet updated successfully.");
+//     } catch (error) {
+//         console.error(error);
+//         alert("Sheet update failed: " + error.message);
+//     } finally {
+//         btn.innerHTML = oldText;
+//         btn.disabled = false;
+//     }
+// }
+
+
+
+
 async function pushChangesToSheet() {
     if (!validatorSheetMode) {
         alert("This data was not loaded from Google Sheets.");
         return;
     }
 
-    const changedRows = getChangedRowsOnly();
+    const changedRows = rawDataset.filter(row => {
+        if (!row.__rowNumber) return false;
+
+        const original = originalRowsByNumber[row.__rowNumber];
+        if (!original) return false;
+
+        const originalRow = JSON.parse(original);
+
+        return String(originalRow.level || "") !== String(row.level || "");
+    });
 
     if (changedRows.length === 0) {
-        alert("No changes to push.");
+        alert("No difficulty level changes to push.");
         return;
     }
 
-    const confirmed = confirm(`Push ${changedRows.length} changed row(s) back to Google Sheet?`);
+    const confirmed = confirm(`Push ${changedRows.length} difficulty level change(s) back to Google Sheet?`);
     if (!confirmed) return;
 
     const btn = document.getElementById("push-sheet-btn");
     const oldText = btn.innerHTML;
 
-    btn.innerHTML = "⏳ Updating...";
+    btn.innerHTML = "⏳ Updating levels...";
     btn.disabled = true;
 
     try {
-        const res = await fetch("/validator-update-sheet", {
+        const res = await fetch("/validator-update-levels", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1093,23 +1182,25 @@ async function pushChangesToSheet() {
             body: JSON.stringify({
                 spreadsheet_id: validatorSpreadsheetId,
                 sheet_name: validatorSheetName,
-                headers: dataHeaders,
-                rows: changedRows,
+                rows: changedRows.map(row => ({
+                    __rowNumber: row.__rowNumber,
+                    level: row.level
+                })),
             }),
         });
 
         const data = await res.json();
 
         if (!res.ok) {
-            throw new Error(data.error || "Failed to update sheet");
+            throw new Error(data.error || "Failed to update levels");
         }
 
         rememberOriginalRows(rawDataset);
 
-        alert(data.message || "Sheet updated successfully.");
+        alert(data.message || "Difficulty levels updated successfully.");
     } catch (error) {
         console.error(error);
-        alert("Sheet update failed: " + error.message);
+        alert("Level update failed: " + error.message);
     } finally {
         btn.innerHTML = oldText;
         btn.disabled = false;
@@ -1117,6 +1208,19 @@ async function pushChangesToSheet() {
 }
 
 
+
+
+
+        
+        function updateLevelOnly(index, newLevel) {
+            const levelKey = queueContainer.getAttribute('data-lkey') || 'level';
+        
+            if (!rawDataset[index]) return;
+        
+            rawDataset[index][levelKey] = newLevel;
+        
+            console.log(`Updated row ${index + 1} level to:`, newLevel);
+        }
 
 
         
@@ -1287,7 +1391,8 @@ async function pushChangesToSheet() {
             queueContainer.innerHTML = '';
             
             const tKey = document.getElementById('map-title').value;
-            const lKey = document.getElementById('map-level').value;
+            // const lKey = document.getElementById('map-level').value;
+            const lKey = 'level';
             const qKey = document.getElementById('map-question').value;
             const oKey = document.getElementById('map-options').value;
             const cKey = document.getElementById('map-correct').value;
@@ -1348,7 +1453,22 @@ async function pushChangesToSheet() {
                     </div>
 
                     <div>
-                        <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Difficulty: ${escapeHtml(level)}</span>
+                        // <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Difficulty: ${escapeHtml(level)}</span>
+
+                        <div class="mb-2">
+    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">
+        Difficulty
+    </label>
+
+    <select
+        class="level-dropdown border border-slate-300 rounded-md px-2 py-1 text-xs font-bold bg-white text-slate-800"
+        onchange="updateLevelOnly(${index}, this.value)"
+    >
+        <option value="Hard" ${String(level).toLowerCase() === "hard" ? "selected" : ""}>Hard</option>
+        <option value="Medium" ${String(level).toLowerCase() === "medium" ? "selected" : ""}>Medium</option>
+        <option value="Easy" ${String(level).toLowerCase() === "easy" ? "selected" : ""}>Easy</option>
+    </select>
+</div>
                         <div class="latex-content text-slate-900 text-sm leading-relaxed">${renderMarkdownAndLatex(question)}</div>
                     </div>
 
