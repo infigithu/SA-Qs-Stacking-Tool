@@ -22,55 +22,116 @@ export async function onRequestPost(context) {
 
     const accessToken = await getGoogleAccessToken(env);
 
+
     let sent = 0;
+const telegramErrors = [];
 
-    for (const q of questions) {
-      const hasFigures = Boolean(q.has_figures);
+for (const q of questions) {
+  const hasFigures = Boolean(q.has_figures);
 
-      if (hasFigures) {
-        const qImages = q.question_figures || [];
-        const sImages = q.solution_figures || [];
-        const title = q.title || "Untitled Question";
+  const options = q.options || [];
+  const optionsStr = Array.isArray(options) ? JSON.stringify(options) : String(options || "");
 
-        await sendImagesToTelegram(env, title, qImages, sImages);
-      }
+  const tags = q.tags || "";
+  const tagsStr = Array.isArray(tags) ? tags.join(", ") : String(tags || "");
 
-      const options = q.options || [];
-      const optionsStr = Array.isArray(options) ? JSON.stringify(options) : String(options || "");
+  const row = [
+    q.title || "",
+    q.chapter_title || "",
+    q.subject || "",
+    q.type || "",
+    q.level || "",
+    q.max_xp || "",
+    q.statement || "",
+    q.solution || "",
+    q.hint || "",
+    q.correct_answer || "",
+    optionsStr,
+    tagsStr,
+    q.is_visible ?? true,
+    q.is_formula ?? false,
+    q.is_concept ?? false,
+    q.is_pyq ?? false,
+    q.pyq_exam || "",
+    q.pyq_year || "",
+    hasFigures,
+  ];
 
-      const tags = q.tags || "";
-      const tagsStr = Array.isArray(tags) ? tags.join(", ") : String(tags || "");
+  // First save to Google Sheets
+  await appendRow(accessToken, spreadsheetId, sheetName, row);
+  sent++;
 
-      const row = [
-        q.title || "",
-        q.chapter_title || "",
-        q.subject || "",
-        q.type || "",
-        q.level || "",
-        q.max_xp || "",
-        q.statement || "",
-        q.solution || "",
-        q.hint || "",
-        q.correct_answer || "",
-        optionsStr,
-        tagsStr,
-        q.is_visible ?? true,
-        q.is_formula ?? false,
-        q.is_concept ?? false,
-        q.is_pyq ?? false,
-        q.pyq_exam || "",
-        q.pyq_year || "",
-        hasFigures,
-      ];
+  // Then try Telegram
+  if (hasFigures) {
+    try {
+      const qImages = q.question_figures || [];
+      const sImages = q.solution_figures || [];
+      const title = q.title || "Untitled Question";
 
-      await appendRow(accessToken, spreadsheetId, sheetName, row);
-      sent++;
+      await sendImagesToTelegram(env, title, qImages, sImages);
+    } catch (err) {
+      telegramErrors.push(`${q.title || "Untitled Question"}: ${err.message}`);
+      console.error("Telegram failed:", err);
     }
+  }
+}
 
-    return json({
-      sent,
-      message: `${sent} question(s) saved to "${sheetName}"!`,
-    });
+return json({
+  sent,
+  message: `${sent} question(s) saved to "${sheetName}"!`,
+  telegram_errors: telegramErrors,
+});
+    
+
+    // let sent = 0;
+
+    // for (const q of questions) {
+    //   const hasFigures = Boolean(q.has_figures);
+
+    //   // if (hasFigures) {
+    //   //   const qImages = q.question_figures || [];
+    //   //   const sImages = q.solution_figures || [];
+    //   //   const title = q.title || "Untitled Question";
+
+    //   //   await sendImagesToTelegram(env, title, qImages, sImages);
+    //   // }
+
+    //   const options = q.options || [];
+    //   const optionsStr = Array.isArray(options) ? JSON.stringify(options) : String(options || "");
+
+    //   const tags = q.tags || "";
+    //   const tagsStr = Array.isArray(tags) ? tags.join(", ") : String(tags || "");
+
+    //   const row = [
+    //     q.title || "",
+    //     q.chapter_title || "",
+    //     q.subject || "",
+    //     q.type || "",
+    //     q.level || "",
+    //     q.max_xp || "",
+    //     q.statement || "",
+    //     q.solution || "",
+    //     q.hint || "",
+    //     q.correct_answer || "",
+    //     optionsStr,
+    //     tagsStr,
+    //     q.is_visible ?? true,
+    //     q.is_formula ?? false,
+    //     q.is_concept ?? false,
+    //     q.is_pyq ?? false,
+    //     q.pyq_exam || "",
+    //     q.pyq_year || "",
+    //     hasFigures,
+    //   ];
+
+    //   await appendRow(accessToken, spreadsheetId, sheetName, row);
+    //   sent++;
+    // }
+
+    // return json({
+    //   sent,
+    //   message: `${sent} question(s) saved to "${sheetName}"!`,
+    // });
   } catch (error) {
     return json({ error: error.message || "Send failed" }, 500);
   }
