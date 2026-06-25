@@ -5,7 +5,7 @@ anthropic
 gspread
 google-auth
 httpx
-Pillow
+
 python-dotenv
 python-dotenv
 gunicorn==21.2.0
