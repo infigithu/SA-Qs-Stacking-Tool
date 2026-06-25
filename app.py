@@ -171,6 +171,63 @@ def get_sheet(spreadsheet_id, sheet_name):
 
 
 
+# def send_images_to_telegram(title, q_images, s_images):
+#     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+#         return
+
+#     all_images = q_images + s_images
+#     if not all_images:
+#         return
+
+#     # --- YOUR NEW SUFFIX LOGIC ---
+#     if q_images and s_images:
+#         display_title = f"{title} (Qs + Soln)"
+#     elif q_images:
+#         display_title = f"{title} (Qs)"
+#     elif s_images:
+#         display_title = f"{title} (Soln)"
+#     else:
+#         display_title = title
+#     # -----------------------------
+
+#     files = {}
+#     media = []
+
+#     for i, b64_str in enumerate(all_images):
+#         if b64_str.startswith("data:image"):
+#             b64_str = b64_str.split(",")[1]
+
+#         image_bytes = base64.b64decode(b64_str)
+#         file_name = f"image_{i}.jpg"
+#         files[file_name] = (file_name, image_bytes, "image/jpeg")
+
+#         media_item = {"type": "photo", "media": f"attach://{file_name}"}
+        
+#         # We attach your new display_title to the first image in the group
+#         if i == 0:
+#             media_item["caption"] = display_title
+            
+#         media.append(media_item)
+
+#     if len(all_images) == 1:
+#         # Single image logic
+#         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+#         data = {"chat_id": TELEGRAM_CHAT_ID, "caption": display_title}
+#         single_file = {"photo": files["image_0.jpg"]}
+#         response = httpx.post(url, data=data, files=single_file, timeout=15.0)
+#         print(f"Telegram Response (Single): {response.text}")
+
+#     else:
+#         # Multiple images logic
+#         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMediaGroup"
+#         data = {"chat_id": TELEGRAM_CHAT_ID, "media": json.dumps(media)}
+#         response = httpx.post(url, data=data, files=files, timeout=30.0)
+#         print(f"Telegram Response (Multi): {response.text}")
+
+
+
+
+
 def send_images_to_telegram(title, q_images, s_images):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
@@ -179,7 +236,7 @@ def send_images_to_telegram(title, q_images, s_images):
     if not all_images:
         return
 
-    # --- YOUR NEW SUFFIX LOGIC ---
+    # Add the text suffixes
     if q_images and s_images:
         display_title = f"{title} (Qs + Soln)"
     elif q_images:
@@ -188,43 +245,64 @@ def send_images_to_telegram(title, q_images, s_images):
         display_title = f"{title} (Soln)"
     else:
         display_title = title
-    # -----------------------------
 
     files = {}
     media = []
 
+    # Process all Base64 images into raw bytes
     for i, b64_str in enumerate(all_images):
         if b64_str.startswith("data:image"):
             b64_str = b64_str.split(",")[1]
 
         image_bytes = base64.b64decode(b64_str)
         file_name = f"image_{i}.jpg"
+        
+        # Standard tuple: (filename, bytes, content_type)
         files[file_name] = (file_name, image_bytes, "image/jpeg")
 
         media_item = {"type": "photo", "media": f"attach://{file_name}"}
         
-        # We attach your new display_title to the first image in the group
         if i == 0:
-            media_item["caption"] = display_title
+            media_item["caption"] = str(display_title)
             
         media.append(media_item)
 
     if len(all_images) == 1:
-        # Single image logic
+        # --- SINGLE IMAGE LOGIC ---
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-        data = {"chat_id": TELEGRAM_CHAT_ID, "caption": display_title}
+        
+        # FIX: Force chat_id and caption to strings so httpx multipart doesn't crash
+        data = {
+            "chat_id": str(TELEGRAM_CHAT_ID),
+            "caption": str(display_title)
+        }
+        
+        # sendPhoto specifically requires the key to be named "photo"
         single_file = {"photo": files["image_0.jpg"]}
-        response = httpx.post(url, data=data, files=single_file, timeout=15.0)
-        print(f"Telegram Response (Single): {response.text}")
+        
+        try:
+            response = httpx.post(url, data=data, files=single_file, timeout=20.0)
+            if not response.is_success:
+                print(f"Telegram single photo rejected: {response.text}")
+        except Exception as e:
+            print(f"Telegram single photo crash: {e}")
 
     else:
-        # Multiple images logic
+        # --- MULTIPLE IMAGES LOGIC ---
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMediaGroup"
-        data = {"chat_id": TELEGRAM_CHAT_ID, "media": json.dumps(media)}
-        response = httpx.post(url, data=data, files=files, timeout=30.0)
-        print(f"Telegram Response (Multi): {response.text}")
-
-
+        
+        # FIX: Force chat_id to string here as well
+        data = {
+            "chat_id": str(TELEGRAM_CHAT_ID), 
+            "media": json.dumps(media)
+        }
+        
+        try:
+            response = httpx.post(url, data=data, files=files, timeout=30.0)
+            if not response.is_success:
+                print(f"Telegram media group rejected: {response.text}")
+        except Exception as e:
+            print(f"Telegram media group crash: {e}")
 
 
 
