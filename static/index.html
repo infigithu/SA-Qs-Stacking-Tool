@@ -587,8 +587,11 @@ async function sendAll() {
           }
           errorMsg.classList.add('hidden');
           
-          for (let file of qInput.files) qImages.push(await toBase64(file));
-          for (let file of sInput.files) sImages.push(await toBase64(file));
+          // for (let file of qInput.files) qImages.push(await toBase64(file));
+          // for (let file of sInput.files) sImages.push(await toBase64(file));
+
+          for (let file of qInput.files) qImages.push(await toTelegramBase64(file));
+          for (let file of sInput.files) sImages.push(await toTelegramBase64(file));
       }
       
       qData.has_figures = hasFigures;
