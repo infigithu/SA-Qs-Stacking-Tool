@@ -57,11 +57,9 @@ for (const q of questions) {
     hasFigures,
   ];
 
-  // First save to Google Sheets
   await appendRow(accessToken, spreadsheetId, sheetName, row);
   sent++;
 
-  // Then try Telegram
   if (hasFigures) {
     try {
       const qImages = q.question_figures || [];
@@ -165,10 +163,10 @@ async function appendRow(accessToken, spreadsheetId, sheetName, row) {
 
 async function sendImagesToTelegram(env, title, qImages, sImages) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
-    return;
+    throw new Error("Missing Telegram env variables");
   }
 
-  const allImages = [...qImages, ...sImages];
+  const allImages = [...qImages, ...sImages].filter(Boolean);
 
   if (!allImages.length) {
     return;
@@ -184,34 +182,30 @@ async function sendImagesToTelegram(env, title, qImages, sImages) {
     displayTitle = `${title} (Soln)`;
   }
 
-  if (allImages.length === 1) {
-    await sendSingleTelegramImage(env, displayTitle, allImages[0]);
-  } else {
-    await sendTelegramMediaGroup(env, displayTitle, allImages);
+  displayTitle = String(displayTitle).slice(0, 1024);
+
+  try {
+    if (allImages.length === 1) {
+      await sendSingleTelegramImage(env, displayTitle, allImages[0], 0);
+    } else {
+      await sendTelegramMediaGroup(env, displayTitle, allImages);
+    }
+  } catch (photoError) {
+    console.error("Telegram photo failed, falling back to documents:", photoError);
+
+    for (let i = 0; i < allImages.length; i++) {
+      await sendTelegramDocument(
+        env,
+        i === 0 ? `${displayTitle}\n\n⚠️ Sent as document because Telegram could not process it as photo.` : "",
+        allImages[i],
+        i
+      );
+    }
   }
 }
 
-// async function sendSingleTelegramImage(env, caption, imageB64) {
-//   const form = new FormData();
-
-//   form.append("chat_id", env.TELEGRAM_CHAT_ID);
-//   form.append("caption", caption);
-//   form.append("photo", base64ToBlob(imageB64), "image.jpg");
-
-//   const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`, {
-//     method: "POST",
-//     body: form,
-//   });
-
-//   if (!response.ok) {
-//     const text = await response.text();
-//     throw new Error(`Telegram sendPhoto failed: ${text}`);
-//   }
-// }
-
-
-async function sendSingleTelegramImage(env, caption, imageB64) {
-  const file = base64ToTelegramFile(imageB64, 0);
+async function sendSingleTelegramImage(env, caption, imageB64, index = 0) {
+  const file = base64ToTelegramFile(imageB64, index);
 
   if (file.size > 10 * 1024 * 1024) {
     throw new Error(`Image too large for Telegram photo: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
@@ -219,7 +213,7 @@ async function sendSingleTelegramImage(env, caption, imageB64) {
 
   const form = new FormData();
   form.append("chat_id", env.TELEGRAM_CHAT_ID);
-  form.append("caption", String(caption).slice(0, 1024));
+  form.append("caption", caption);
   form.append("photo", file.blob, file.filename);
 
   const response = await fetch(
@@ -230,65 +224,24 @@ async function sendSingleTelegramImage(env, caption, imageB64) {
     }
   );
 
+  const text = await response.text();
+
   if (!response.ok) {
-    const text = await response.text();
     throw new Error(`Telegram sendPhoto failed: ${text}`);
   }
 }
-
-
-
-// async function sendTelegramMediaGroup(env, caption, images) {
-//   const form = new FormData();
-
-//   form.append("chat_id", env.TELEGRAM_CHAT_ID);
-
-//   const media = images.map((_, index) => {
-//     const item = {
-//       type: "photo",
-//       media: `attach://image_${index}.jpg`,
-//     };
-
-//     if (index === 0) {
-//       item.caption = caption;
-//     }
-
-//     return item;
-//   });
-
-//   form.append("media", JSON.stringify(media));
-
-//   images.forEach((imageB64, index) => {
-//     form.append(`image_${index}.jpg`, base64ToBlob(imageB64), `image_${index}.jpg`);
-//   });
-
-//   const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMediaGroup`, {
-//     method: "POST",
-//     body: form,
-//   });
-
-//   if (!response.ok) {
-//     const text = await response.text();
-//     throw new Error(`Telegram sendMediaGroup failed: ${text}`);
-//   }
-// }
-
 
 async function sendTelegramMediaGroup(env, caption, images) {
   const form = new FormData();
   form.append("chat_id", env.TELEGRAM_CHAT_ID);
 
-  const prepared = images.map((imageB64, index) => {
-    const file = base64ToTelegramFile(imageB64, index);
+  const prepared = images.map((imageB64, index) => base64ToTelegramFile(imageB64, index));
 
+  for (const file of prepared) {
     if (file.size > 10 * 1024 * 1024) {
-      throw new Error(
-        `Image ${index + 1} too large for Telegram photo: ${(file.size / 1024 / 1024).toFixed(2)} MB`
-      );
+      throw new Error(`Image too large for Telegram photo: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
     }
-
-    return file;
-  });
+  }
 
   const media = prepared.map((file, index) => {
     const attachName = `photo_${index}`;
@@ -299,7 +252,7 @@ async function sendTelegramMediaGroup(env, caption, images) {
     };
 
     if (index === 0) {
-      item.caption = String(caption).slice(0, 1024);
+      item.caption = caption;
     }
 
     return item;
@@ -319,34 +272,53 @@ async function sendTelegramMediaGroup(env, caption, images) {
     }
   );
 
+  const text = await response.text();
+
   if (!response.ok) {
-    const text = await response.text();
     throw new Error(`Telegram sendMediaGroup failed: ${text}`);
   }
 }
 
+async function sendTelegramDocument(env, caption, imageB64, index = 0) {
+  const file = base64ToTelegramFile(imageB64, index);
 
+  if (file.size > 50 * 1024 * 1024) {
+    throw new Error(`Image too large even for Telegram document: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+  }
 
-// function base64ToBlob(b64) {
-//   const clean = b64.includes(",") ? b64.split(",")[1] : b64;
-//   const binary = atob(clean);
-//   const bytes = new Uint8Array(binary.length);
+  const form = new FormData();
+  form.append("chat_id", env.TELEGRAM_CHAT_ID);
 
-//   for (let i = 0; i < binary.length; i++) {
-//     bytes[i] = binary.charCodeAt(i);
-//   }
+  if (caption) {
+    form.append("caption", String(caption).slice(0, 1024));
+  }
 
-//   return new Blob([bytes], {
-//     type: "image/jpeg",
-//   });
-// }
+  form.append("document", file.blob, file.filename);
 
+  const response = await fetch(
+    `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendDocument`,
+    {
+      method: "POST",
+      body: form,
+    }
+  );
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`Telegram sendDocument failed: ${text}`);
+  }
+}
 
 function base64ToTelegramFile(b64, index = 0) {
-  let mime = "image/jpeg";
-  let clean = b64;
+  if (!b64 || typeof b64 !== "string") {
+    throw new Error("Invalid image data");
+  }
 
-  if (typeof b64 === "string" && b64.startsWith("data:")) {
+  let clean = b64;
+  let mime = "image/jpeg";
+
+  if (b64.startsWith("data:")) {
     const match = b64.match(/^data:(.*?);base64,(.*)$/);
 
     if (!match) {
@@ -355,6 +327,8 @@ function base64ToTelegramFile(b64, index = 0) {
 
     mime = match[1] || "image/jpeg";
     clean = match[2];
+  } else if (b64.includes(",")) {
+    clean = b64.split(",", 2)[1];
   }
 
   clean = clean.trim();
@@ -374,9 +348,9 @@ function base64ToTelegramFile(b64, index = 0) {
 
   return {
     blob: new Blob([bytes], { type: mime }),
-    filename: `image_${index}.${ext}`,
-    mime,
+    filename: `figure_${index}.${ext}`,
     size: bytes.length,
+    mime,
   };
 }
 
