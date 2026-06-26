@@ -204,6 +204,98 @@ function toBase64(file) {
     });
 }
 
+
+
+// --------------------------------------------------------------
+  
+
+async function toTelegramBase64(file) {
+  // Only allow browser-readable image files
+  if (!file.type.startsWith('image/')) {
+    throw new Error(`${file.name} is not an image file.`);
+  }
+
+  const img = await loadImageFromFile(file);
+
+  let width = img.naturalWidth || img.width;
+  let height = img.naturalHeight || img.height;
+
+  const maxSide = 2400;
+  const maxSum = 9000;
+
+  let scale = Math.min(
+    1,
+    maxSide / width,
+    maxSide / height,
+    maxSum / (width + height)
+  );
+
+  width = Math.max(1, Math.round(width * scale));
+  height = Math.max(1, Math.round(height * scale));
+
+  let canvasWidth = width;
+  let canvasHeight = height;
+
+  const ratio = Math.max(width, height) / Math.max(1, Math.min(width, height));
+
+  if (ratio > 18) {
+    if (width > height) {
+      canvasHeight = Math.ceil(width / 18);
+    } else {
+      canvasWidth = Math.ceil(height / 18);
+    }
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  const x = Math.round((canvasWidth - width) / 2);
+  const y = Math.round((canvasHeight - height) / 2);
+
+  ctx.drawImage(img, x, y, width, height);
+
+  let quality = 0.9;
+  let dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+  while (dataUrl.length > 12_000_000 && quality > 0.55) {
+    quality -= 0.1;
+    dataUrl = canvas.toDataURL('image/jpeg', quality);
+  }
+
+  return dataUrl;
+}
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error(`Could not load image: ${file.name}`));
+    };
+
+    img.src = url;
+  });
+}
+
+
+// -------------------------------------------------
+
+
+  
+
 function addBox() {
   boxCounter++;
   const id = boxCounter;
@@ -549,25 +641,152 @@ async function verifyQuestion(id) {
   btn.disabled = false;
 }
 
-async function sendAll() {
-  const verified = boxes.filter(b => b.verified && results[b.id]);
-  if (verified.length === 0) { alert('Verify at least one question first!'); return; }
+// async function sendAll() {
+//   const verified = boxes.filter(b => b.verified && results[b.id]);
+//   if (verified.length === 0) { alert('Verify at least one question first!'); return; }
 
-  const spreadsheetId = document.getElementById('spreadsheet_id').value.trim();
-  const sheetSel = document.getElementById('sheet_selector');
-  const sheetName = sheetSel.value;
+//   const spreadsheetId = document.getElementById('spreadsheet_id').value.trim();
+//   const sheetSel = document.getElementById('sheet_selector');
+//   const sheetName = sheetSel.value;
 
-  if (!spreadsheetId) { alert('Please paste a Spreadsheet ID first.'); return; }
-  if (!sheetName) { alert('Please fetch and select a destination sub-sheet first.'); return; }
+//   if (!spreadsheetId) { alert('Please paste a Spreadsheet ID first.'); return; }
+//   if (!sheetName) { alert('Please fetch and select a destination sub-sheet first.'); return; }
 
-  const btn = document.getElementById('send-btn');
-  btn.disabled = true;
+//   const btn = document.getElementById('send-btn');
+//   btn.disabled = true;
   
-  let questionsPayload = [];
+//   let questionsPayload = [];
   
-  for (let b of verified) {
-      let qData = JSON.parse(JSON.stringify(results[b.id]));
+//   for (let b of verified) {
+//       let qData = JSON.parse(JSON.stringify(results[b.id]));
       
+//       const toggle = document.getElementById(`toggle-fig-${b.id}`);
+//       const errorMsg = document.getElementById(`fig-error-${b.id}`);
+//       const hasFigures = toggle ? toggle.checked : false;
+
+//       let qImages = [];
+//       let sImages = [];
+
+//       if (hasFigures) {
+//           const qInput = document.getElementById(`q-figures-${b.id}`);
+//           const sInput = document.getElementById(`s-figures-${b.id}`);
+          
+//           if (qInput.files.length === 0 && sInput.files.length === 0) {
+//               errorMsg.classList.remove('hidden');
+//               alert(`Missing figures for Q${b.id}. Please add them or turn off the switch.`);
+//               btn.disabled = false;
+//               return; 
+//           }
+//           errorMsg.classList.add('hidden');
+          
+//           // for (let file of qInput.files) qImages.push(await toBase64(file));
+//           // for (let file of sInput.files) sImages.push(await toBase64(file));
+
+//           for (let file of qInput.files) qImages.push(await toTelegramBase64(file));
+//           for (let file of sInput.files) sImages.push(await toTelegramBase64(file));
+//       }
+      
+//       qData.has_figures = hasFigures;
+//       qData.question_figures = qImages;
+//       qData.solution_figures = sImages;
+      
+//       questionsPayload.push(qData);
+//   }
+
+//   const progressDiv = document.getElementById('send-progress');
+//   const progressFill = document.getElementById('progress-fill');
+//   const progressText = document.getElementById('progress-text');
+//   progressDiv.style.display = 'block';
+
+//   try {
+//     progressText.textContent = `Sending ${questionsPayload.length} question(s) to Sheets & Telegram…`;
+//     progressFill.style.width = '50%';
+
+//     const res = await fetch('/send', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ 
+//           questions: questionsPayload, 
+//           spreadsheet_id: spreadsheetId,
+//           sheet_name: sheetName 
+//       })
+//     });
+    
+//     const data = await res.json();
+//     progressFill.style.width = '100%';
+//     progressText.textContent = data.message || `${data.sent} sent!`;
+//   } catch (e) {
+//     progressText.textContent = 'Error: ' + e.message;
+//   }
+
+//   btn.disabled = false;
+// }
+
+// async function retryBox(id) {
+//   const box = boxes.find(b => b.id === id);
+//   if (!box) return;
+//   if (box.images.length === 0) { alert('No images in this box!'); return; }
+  
+//   const card = document.getElementById(`result-${id}`);
+//   if (card) {
+//     card.innerHTML = `
+//       <div class="result-header">
+//         <span class="result-title">Q${id}</span>
+//         <span class="status-badge badge-generated"><span class="loading"></span>Generating...</span>
+//       </div>
+//     `;
+//   }
+  
+//   delete results[id];
+//   box.verified = false;
+  
+//   await generateBox(box);
+//   renderResults();
+//   renderBoxes();
+// }
+
+
+
+
+
+async function sendAll() {
+  const btn = document.getElementById('send-btn');
+  const progressDiv = document.getElementById('send-progress');
+  const progressFill = document.getElementById('progress-fill');
+  const progressText = document.getElementById('progress-text');
+
+  try {
+    const verified = boxes.filter(b => b.verified && results[b.id]);
+
+    if (verified.length === 0) {
+      alert('Verify at least one question first!');
+      return;
+    }
+
+    const spreadsheetId = document.getElementById('spreadsheet_id').value.trim();
+    const sheetSel = document.getElementById('sheet_selector');
+    const sheetName = sheetSel.value;
+
+    if (!spreadsheetId) {
+      alert('Please paste a Spreadsheet ID first.');
+      return;
+    }
+
+    if (!sheetName) {
+      alert('Please fetch and select a destination sub-sheet first.');
+      return;
+    }
+
+    btn.disabled = true;
+    progressDiv.style.display = 'block';
+    progressFill.style.width = '5%';
+    progressText.textContent = 'Preparing figures...';
+
+    let questionsPayload = [];
+
+    for (let b of verified) {
+      let qData = JSON.parse(JSON.stringify(results[b.id]));
+
       const toggle = document.getElementById(`toggle-fig-${b.id}`);
       const errorMsg = document.getElementById(`fig-error-${b.id}`);
       const hasFigures = toggle ? toggle.checked : false;
@@ -576,84 +795,89 @@ async function sendAll() {
       let sImages = [];
 
       if (hasFigures) {
-          const qInput = document.getElementById(`q-figures-${b.id}`);
-          const sInput = document.getElementById(`s-figures-${b.id}`);
-          
-          if (qInput.files.length === 0 && sInput.files.length === 0) {
-              errorMsg.classList.remove('hidden');
-              alert(`Missing figures for Q${b.id}. Please add them or turn off the switch.`);
-              btn.disabled = false;
-              return; 
-          }
-          errorMsg.classList.add('hidden');
-          
-          // for (let file of qInput.files) qImages.push(await toBase64(file));
-          // for (let file of sInput.files) sImages.push(await toBase64(file));
+        const qInput = document.getElementById(`q-figures-${b.id}`);
+        const sInput = document.getElementById(`s-figures-${b.id}`);
 
-          for (let file of qInput.files) qImages.push(await toTelegramBase64(file));
-          for (let file of sInput.files) sImages.push(await toTelegramBase64(file));
+        if (!qInput || !sInput) {
+          throw new Error(`Figure input missing for Q${b.id}`);
+        }
+
+        if (qInput.files.length === 0 && sInput.files.length === 0) {
+          if (errorMsg) errorMsg.classList.remove('hidden');
+          alert(`Missing figures for Q${b.id}. Please add them or turn off the switch.`);
+          return;
+        }
+
+        if (errorMsg) errorMsg.classList.add('hidden');
+
+        for (let file of qInput.files) {
+          console.log('Preparing question figure:', file.name, file.type, file.size);
+          qImages.push(await toTelegramBase64(file));
+        }
+
+        for (let file of sInput.files) {
+          console.log('Preparing solution figure:', file.name, file.type, file.size);
+          sImages.push(await toTelegramBase64(file));
+        }
       }
-      
+
       qData.has_figures = hasFigures;
       qData.question_figures = qImages;
       qData.solution_figures = sImages;
-      
+
       questionsPayload.push(qData);
-  }
+    }
 
-  const progressDiv = document.getElementById('send-progress');
-  const progressFill = document.getElementById('progress-fill');
-  const progressText = document.getElementById('progress-text');
-  progressDiv.style.display = 'block';
-
-  try {
     progressText.textContent = `Sending ${questionsPayload.length} question(s) to Sheets & Telegram…`;
     progressFill.style.width = '50%';
+
+    console.log('Calling /send with payload:', questionsPayload);
 
     const res = await fetch('/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-          questions: questionsPayload, 
-          spreadsheet_id: spreadsheetId,
-          sheet_name: sheetName 
+      body: JSON.stringify({
+        questions: questionsPayload,
+        spreadsheet_id: spreadsheetId,
+        sheet_name: sheetName
       })
     });
-    
+
     const data = await res.json();
+
+    console.log('/send response:', data);
+
     progressFill.style.width = '100%';
-    progressText.textContent = data.message || `${data.sent} sent!`;
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Send failed');
+    }
+
+    let msg = data.message || `${data.sent} sent!`;
+
+    if (data.telegram_errors && data.telegram_errors.length > 0) {
+      msg += ` Telegram errors: ${data.telegram_errors.length}`;
+      console.warn('Telegram errors:', data.telegram_errors);
+    }
+
+    progressText.textContent = msg;
+
   } catch (e) {
+    console.error('sendAll failed:', e);
     progressText.textContent = 'Error: ' + e.message;
+    alert('Send failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
   }
-
-  btn.disabled = false;
-}
-
-async function retryBox(id) {
-  const box = boxes.find(b => b.id === id);
-  if (!box) return;
-  if (box.images.length === 0) { alert('No images in this box!'); return; }
-  
-  const card = document.getElementById(`result-${id}`);
-  if (card) {
-    card.innerHTML = `
-      <div class="result-header">
-        <span class="result-title">Q${id}</span>
-        <span class="status-badge badge-generated"><span class="loading"></span>Generating...</span>
-      </div>
-    `;
-  }
-  
-  delete results[id];
-  box.verified = false;
-  
-  await generateBox(box);
-  renderResults();
-  renderBoxes();
 }
 
 
+
+
+
+
+
+  
 // ==========================================
 // FEATURE: SAVED SETTINGS MEMORY
 // ==========================================
