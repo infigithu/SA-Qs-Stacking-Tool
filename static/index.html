@@ -78,6 +78,23 @@ input:checked+.slider:before{transform:translateX(14px)}
 .field-value{font-size:13px;color:#111;font-weight:500}
 .field-value.editable{cursor:pointer;border-bottom:1px dashed #ccc}
 .field-value.editable:hover{color:#185FA5}
+.field-control {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid #d5d5d5;
+  border-radius: 6px;
+  background: #fff;
+  color: #111;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+}
+
+.field-control:focus {
+  border-color: #185FA5;
+  box-shadow: 0 0 0 2px rgba(24, 95, 165, 0.12);
+}
 .result-actions{display:flex;gap:8px;flex-wrap:wrap}
 .fix-area{margin-top:12px;display:none}
 .fix-area input{width:100%;padding:8px 12px;border:1px solid #d5d5d5;border-radius:8px;font-size:13px;margin-bottom:8px}
@@ -455,6 +472,51 @@ async function generateBox(box) {
   }
 }
 
+
+
+
+function normalizeQuestionLevel(level) {
+  const normalized = String(level || '').trim().toLowerCase();
+
+  if (normalized === 'easy') return 'Easy';
+  if (normalized === 'hard') return 'Hard';
+
+  return 'Medium';
+}
+
+function normalizeMaxXp(maxXp) {
+  const value = Number(maxXp);
+
+  return Number.isInteger(value) && value >= 0 ? value : 0;
+}
+
+function updateQuestionLevel(id, level) {
+  if (!results[id]) return;
+
+  results[id].level = normalizeQuestionLevel(level);
+}
+
+function updateQuestionMaxXp(id, input) {
+  if (!results[id]) return;
+
+  const value = Number(input.value);
+
+  if (!Number.isInteger(value) || value < 0) {
+    input.setCustomValidity('Max XP must be a non-negative integer.');
+    input.reportValidity();
+    input.value = String(normalizeMaxXp(results[id].max_xp));
+    return;
+  }
+
+  input.setCustomValidity('');
+  results[id].max_xp = value;
+}
+  
+
+
+
+
+  
 function renderResults() {
   const section = document.getElementById('result-section');
   section.innerHTML = '';
@@ -490,6 +552,13 @@ function renderResults() {
               options = [];
           }
       }
+
+
+      const currentLevel = normalizeQuestionLevel(q.level);
+      const currentMaxXp = normalizeMaxXp(q.max_xp);
+      
+      q.level = currentLevel;
+      q.max_xp = currentMaxXp;
       
       const optionsHtml = options.length > 0 ? options.map(o => `
         <div style="font-size:13px;padding:4px 0;color:${o.is_correct?'#085041':'#111'}">
@@ -538,8 +607,50 @@ function renderResults() {
           <div class="field-item"><div class="field-label">Chapter</div><div class="field-value">${q.chapter_title||''}</div></div>
           <div class="field-item"><div class="field-label">Subject</div><div class="field-value">${q.subject||''}</div></div>
           <div class="field-item"><div class="field-label">Type</div><div class="field-value">${q.type||''}</div></div>
-          <div class="field-item"><div class="field-label">Level</div><div class="field-value">${q.level||''}</div></div>
-          <div class="field-item"><div class="field-label">Max XP</div><div class="field-value">${q.max_xp||''}</div></div>
+          
+
+          <div class="field-item">
+            <label class="field-label" for="q-level-${box.id}">
+              Level
+            </label>
+          
+            <select
+              class="field-control"
+              id="q-level-${box.id}"
+              onchange="updateQuestionLevel(${box.id}, this.value)"
+            >
+              <option value="Hard" ${currentLevel === 'Hard' ? 'selected' : ''}>
+                Hard
+              </option>
+          
+              <option value="Medium" ${currentLevel === 'Medium' ? 'selected' : ''}>
+                Medium
+              </option>
+          
+              <option value="Easy" ${currentLevel === 'Easy' ? 'selected' : ''}>
+                Easy
+              </option>
+            </select>
+          </div>
+          
+          <div class="field-item">
+            <label class="field-label" for="q-max-xp-${box.id}">
+              Max XP
+            </label>
+          
+            <input
+              class="field-control"
+              id="q-max-xp-${box.id}"
+              type="number"
+              min="0"
+              step="1"
+              inputmode="numeric"
+              value="${currentMaxXp}"
+              onchange="updateQuestionMaxXp(${box.id}, this)"
+            >
+          </div>
+
+          
           <div class="field-item"><div class="field-label">Correct Answer</div><div class="field-value">${q.correct_answer||'—'}</div></div>
           <div class="field-item"><div class="field-label">Tags</div><div class="field-value">${q.tags||''}</div></div>
           <div class="field-item"><div class="field-label">Hint</div><div class="field-value" style="font-size:11px">${q.hint||''}</div></div>
