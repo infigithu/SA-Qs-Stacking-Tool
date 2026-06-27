@@ -52,7 +52,10 @@ _QUESTION_PROPERTIES = {
     "subject":        {"type": "string"},
     "chapter_title":  {"type": "string"},
     "type":           {"type": "string"},
-    "level":          {"type": "string"},
+    "level": {
+    "type": "string",
+    "enum": ["Easy", "Medium", "Hard"]
+},
     "max_xp":         {"type": "integer"},
     "statement":      {"type": "string"},
     "solution":       {"type": "string"},
@@ -600,7 +603,7 @@ Return ONLY raw JSON, no markdown fences:
   "subject": "Mathematics or Physics or Chemistry",
   "chapter_title": "must match chapter list",
   "type": "{q_type}",
-  "level": "Easy or Medium or Hard or Elite",
+  "level": "Easy or Medium or Hard",
   "max_xp": <3-13>,
   "statement": "Rewrite the question in fresh English phrasing while strictly preserving the visual alignment and line breaks of the original image. All math MUST be in inline LaTeX using $...$ format. Display equations must be wrapped in $$ placed on separate lines.",
   "solution": "concise elegant solution, max 8-10 lines",
