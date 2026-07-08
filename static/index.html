@@ -95,7 +95,40 @@ input:checked+.slider:before{transform:translateX(14px)}
   border-color: #185FA5;
   box-shadow: 0 0 0 2px rgba(24, 95, 165, 0.12);
 }
-.result-actions{display:flex;gap:8px;flex-wrap:wrap}
+/* .result-actions{display:flex;gap:8px;flex-wrap:wrap} */
+
+.result-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.secondary-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.secondary-actions.is-hidden {
+  display: none;
+}
+
+.btn-quiet-orange {
+  background: transparent;
+  border: none;
+  padding: 6px 4px;
+  color: #777;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-quiet-orange:hover {
+  color: #c45a00;
+  background: transparent;
+}
 .fix-area{margin-top:12px;display:none}
 .fix-area input{width:100%;padding:8px 12px;border:1px solid #d5d5d5;border-radius:8px;font-size:13px;margin-bottom:8px}
 .verify-result{margin-top:10px;padding:10px 14px;border-radius:8px;font-size:13px}
@@ -586,6 +619,28 @@ function renderResults() {
         </div>
       `;
 
+
+
+      const verification = box.verification || null;
+
+const showSecondaryActions = verification?.status === "fail";
+
+let verificationHtml = "";
+
+if (verification) {
+  if (verification.status === "pass") {
+    verificationHtml = `<div class="verify-result verify-ok">✓ Verified — ${verification.explanation}</div>`;
+  } else if (verification.status === "warning") {
+    verificationHtml = `<div class="verify-result verify-ok">⚠️ Verified with warning — ${verification.explanation}</div>`;
+  } else if (verification.status === "override") {
+    verificationHtml = `<div class="verify-result verify-ok">✓ Verified manually — This question will be sent to the sheet.</div>`;
+  } else if (verification.status === "fail") {
+    verificationHtml = `<div class="verify-result verify-fail">✗ Issue found — ${verification.explanation}</div>`;
+  }
+}
+
+      
+
       card.innerHTML = `
         <div class="result-header">
           <span class="result-title">Q${box.id} — ${q.title || ''}</span>
@@ -657,8 +712,16 @@ function renderResults() {
         </div>
 
         <div class="result-actions">
-          <button class="btn btn-amber" onclick="toggleFix(${box.id})">✏️ Fix</button>
-          <button class="btn btn-blue" onclick="verifyQuestion(${box.id})" id="verify-btn-${box.id}">✓ Verify</button>
+        
+        <button class="btn btn-amber" onclick="toggleFix(${box.id})">✏️ Fix</button>
+        
+        <button class="btn btn-blue" onclick="verifyQuestion(${box.id})" id="verify-btn-${box.id}">✓ Verify</button>
+        
+        <div class="secondary-actions ${showSecondaryActions ? '' : 'is-hidden'}" id="secondary-actions-${box.id}">
+          <button class="btn-quiet-orange" onclick="verifyAnyway(${box.id})">Verify Anyway</button>
+          <button class="btn-quiet-orange" onclick="autoCompleteSolution(${box.id})">Complete Solution</button>
+        </div>
+        
         </div>
 
         <div class="fix-area" id="fix-area-${box.id}">
@@ -666,7 +729,9 @@ function renderResults() {
           <button class="btn btn-primary btn-sm" onclick="fixQuestion(${box.id})">Apply Fix</button>
         </div>
 
-        <div id="verify-result-${box.id}"></div>
+        // <div id="verify-result-${box.id}"></div>
+
+        <div id="verify-result-${box.id}">${verificationHtml}</div>
       `;
     }
     section.appendChild(card);
@@ -721,10 +786,14 @@ async function fixQuestion(id) {
   btn.disabled = false;
 }
 
+
 async function verifyQuestion(id) {
   const btn = document.getElementById(`verify-btn-${id}`);
-  btn.innerHTML = '<span class="loading"></span>Verifying...';
-  btn.disabled = true;
+
+  if (btn) {
+    btn.innerHTML = '<span class="loading"></span>Verifying...';
+    btn.disabled = true;
+  }
 
   try {
     const res = await fetch('/verify', {
@@ -732,54 +801,197 @@ async function verifyQuestion(id) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: results[id] })
     });
+
     const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
     const box = boxes.find(b => b.id === id);
 
-    const resultDiv = document.getElementById(`verify-result-${id}`);
-    // if (data.correct) {
-    //   resultDiv.innerHTML = `<div class="verify-result verify-ok">✓ Verified — ${data.explanation}</div>`;
-    //   if (box) box.verified = true;
-    // } else {
-    //   resultDiv.innerHTML = `<div class="verify-result verify-fail">✗ Issue found — ${data.explanation}</div>`;
-    //   if (box) box.verified = false;
-    // }
-
-
     const status = data.status || (data.correct ? "pass" : "fail");
-const canSend = data.can_send ?? data.correct === true;
+    const canSend = data.can_send ?? data.correct === true;
 
-if (box) {
-  box.verification = {
-    status,
-    can_send: canSend,
-    explanation: data.explanation || "",
-    inferred_answer: data.inferred_answer || "",
-    suggested_final_line: data.suggested_final_line || ""
-  };
-}
+    if (box) {
+      box.verification = {
+        status,
+        can_send: canSend,
+        explanation: data.explanation || "",
+        inferred_answer: data.inferred_answer || "",
+        suggested_final_line: data.suggested_final_line || ""
+      };
 
-if (status === "pass") {
-  resultDiv.innerHTML = `<div class="verify-result verify-ok">✓ Verified — ${data.explanation}</div>`;
-  if (box) box.verified = true;
+      if (status === "pass" || status === "warning") {
+        box.verified = true;
+      } else {
+        box.verified = false;
+      }
+    }
 
-} else if (status === "warning") {
-  resultDiv.innerHTML = `<div class="verify-result verify-ok">⚠️ Verified with warning — ${data.explanation}</div>`;
-  if (box) box.verified = true;
-
-} else {
-  resultDiv.innerHTML = `<div class="verify-result verify-fail">✗ Issue found — ${data.explanation}</div>`;
-  if (box) box.verified = false;
-}
-
-    
     renderResults();
     renderBoxes();
+
   } catch (e) {
     alert('Verify failed: ' + e.message);
   }
-  btn.innerHTML = '✓ Verify';
-  btn.disabled = false;
+
+  const freshBtn = document.getElementById(`verify-btn-${id}`);
+  if (freshBtn) {
+    freshBtn.innerHTML = '✓ Verify';
+    freshBtn.disabled = false;
+  }
 }
+
+
+function verifyAnyway(id) {
+  const box = boxes.find(b => b.id === id);
+
+  if (!box) {
+    alert("Question box not found.");
+    return;
+  }
+
+  const confirmOverride = confirm(
+    "Are you sure you want to verify this question anyway?\n\nUse this only if you manually checked the solution and options."
+  );
+
+  if (!confirmOverride) return;
+
+  box.verified = true;
+
+  box.verification = {
+    status: "override",
+    can_send: true,
+    explanation: "Manually verified using Verify Anyway.",
+    inferred_answer: "",
+    suggested_final_line: ""
+  };
+
+  renderResults();
+  renderBoxes();
+}
+
+
+
+
+async function autoCompleteSolution(id) {
+  const box = boxes.find(b => b.id === id);
+  const question = results[id];
+
+  if (!box || !question) {
+    alert("Question data not found.");
+    return;
+  }
+
+  const fixPrompt = `Complete the solution properly.
+
+The current solution is incomplete. Continue the derivation from the existing steps and derive the final answer/relationship.
+
+Do not change the question statement.
+Do not change the options unless they are mathematically wrong.
+Do not change the correct option unless the marked option is actually wrong.
+Do not rewrite or remove existing correct solution steps. Only continue from the existing steps and add the missing derivation.
+
+If the question contains options, end the solution with a clear final line:
+Hence, option ___ is correct.
+
+If the question is integer type or has no options, end the solution with a clear final line:
+Hence, the correct answer is ___.`;
+
+  try {
+    const res = await fetch('/fix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: question,
+        fix_prompt: fixPrompt
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    results[id] = data;
+
+    box.verified = false;
+    box.verification = {
+      status: "fail",
+      can_send: false,
+      explanation: "Solution completed. Please verify again.",
+      inferred_answer: "",
+      suggested_final_line: ""
+    };
+
+    renderResults();
+    renderBoxes();
+
+    alert("Solution completed. Please verify again.");
+
+  } catch (e) {
+    alert("Complete solution failed: " + e.message);
+  }
+}  
+  
+
+// async function verifyQuestion(id) {
+//   const btn = document.getElementById(`verify-btn-${id}`);
+//   btn.innerHTML = '<span class="loading"></span>Verifying...';
+//   btn.disabled = true;
+
+//   try {
+//     const res = await fetch('/verify', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ question: results[id] })
+//     });
+//     const data = await res.json();
+//     const box = boxes.find(b => b.id === id);
+
+//     const resultDiv = document.getElementById(`verify-result-${id}`);
+//     // if (data.correct) {
+//     //   resultDiv.innerHTML = `<div class="verify-result verify-ok">✓ Verified — ${data.explanation}</div>`;
+//     //   if (box) box.verified = true;
+//     // } else {
+//     //   resultDiv.innerHTML = `<div class="verify-result verify-fail">✗ Issue found — ${data.explanation}</div>`;
+//     //   if (box) box.verified = false;
+//     // }
+
+
+//     const status = data.status || (data.correct ? "pass" : "fail");
+// const canSend = data.can_send ?? data.correct === true;
+
+// if (box) {
+//   box.verification = {
+//     status,
+//     can_send: canSend,
+//     explanation: data.explanation || "",
+//     inferred_answer: data.inferred_answer || "",
+//     suggested_final_line: data.suggested_final_line || ""
+//   };
+// }
+
+// if (status === "pass") {
+//   resultDiv.innerHTML = `<div class="verify-result verify-ok">✓ Verified — ${data.explanation}</div>`;
+//   if (box) box.verified = true;
+
+// } else if (status === "warning") {
+//   resultDiv.innerHTML = `<div class="verify-result verify-ok">⚠️ Verified with warning — ${data.explanation}</div>`;
+//   if (box) box.verified = true;
+
+// } else {
+//   resultDiv.innerHTML = `<div class="verify-result verify-fail">✗ Issue found — ${data.explanation}</div>`;
+//   if (box) box.verified = false;
+// }
+
+    
+//     renderResults();
+//     renderBoxes();
+//   } catch (e) {
+//     alert('Verify failed: ' + e.message);
+//   }
+//   btn.innerHTML = '✓ Verify';
+//   btn.disabled = false;
+// }
 
 // async function sendAll() {
 //   const verified = boxes.filter(b => b.verified && results[b.id]);
