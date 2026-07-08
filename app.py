@@ -90,10 +90,22 @@ VERIFY_TOOL = [{
     "input_schema": {
         "type": "object",
         "properties": {
-            "correct":     {"type": "boolean"},
+            "status": {
+                "type": "string",
+                "enum": ["pass", "warning", "fail"]
+            },
+            "can_send": {"type": "boolean"},
             "explanation": {"type": "string"},
+            "inferred_answer": {"type": "string"},
+            "suggested_final_line": {"type": "string"}
         },
-        "required": ["correct", "explanation"],
+        "required": [
+            "status",
+            "can_send",
+            "explanation",
+            "inferred_answer",
+            "suggested_final_line"
+        ],
     },
 }]
 
@@ -758,23 +770,71 @@ def verify():
         data = request.json
         question = data.get('question', {})
 
-        prompt = f"""You are a JEE Advanced solution checker. Your job is simple:
+#         prompt = f"""You are a JEE Advanced solution checker. Your job is simple:
 
-1. Read the question and solution carefully
-2. Check if the final answer matches the correct option or correct_answer field
-3. Check if the overall approach and conclusion is correct
-4. Do NOT re-derive from scratch — just validate the approach and final answer
+# 1. Read the question and solution carefully
+# 2. Check if the final answer matches the correct option or correct_answer field
+# 3. Check if the overall approach and conclusion is correct
+# 4. Do NOT re-derive from scratch — just validate the approach and final answer
 
-Be lenient — if the final answer is correct and the approach is reasonable, mark it as correct even if intermediate steps could be written more elegantly.
+# Be lenient — if the final answer is correct and the approach is reasonable, mark it as correct even if intermediate steps could be written more elegantly.
 
-Question: {question.get('statement', '')}
-Type: {question.get('type', '')}
-Options: {json.dumps(question.get('options', []))}
-Solution: {question.get('solution', '')}
-Correct Answer: {question.get('correct_answer', '')}
+# Question: {question.get('statement', '')}
+# Type: {question.get('type', '')}
+# Options: {json.dumps(question.get('options', []))}
+# Solution: {question.get('solution', '')}
+# Correct Answer: {question.get('correct_answer', '')}
 
-Return ONLY this JSON, no extra text, no markdown:
-{{"correct": true, "explanation": "one line reason"}}"""
+# Return ONLY this JSON, no extra text, no markdown:
+# {{"correct": true, "explanation": "one line reason"}}"""
+
+
+
+        prompt = f"""You are a JEE Advanced solution verifier.
+
+Your job is to verify whether this question can be safely sent to the sheet.
+
+Important:
+Do NOT reject only because the solution does not explicitly write the final option label.
+If the solution logically reaches a result that matches the marked correct option(s), mark it as pass.
+If the solution is correct but the final option/conclusion line is missing, mark it as warning and allow sending.
+Only mark fail if the solution is mathematically wrong, incomplete in a way that answer cannot be inferred, or the marked correct option(s) are inconsistent.
+
+Verification rules:
+1. For SCQ/MCQ, use options where is_correct is true as the source of truth.
+2. For INT, use correct_answer as the source of truth.
+3. Compare mathematical equivalence, not exact text.
+4. You may do light checking or substitution if the final answer is not explicitly written.
+5. Do not require the solution to end with "Option A/B/C/D".
+6. If the solution supports the marked option but lacks final line, return status "warning", can_send true.
+
+Question:
+{question.get('statement', '')}
+
+Type:
+{question.get('type', '')}
+
+Options:
+{json.dumps(question.get('options', []))}
+
+Solution:
+{question.get('solution', '')}
+
+Correct Answer:
+{question.get('correct_answer', '')}
+
+Return ONLY JSON:
+{{
+  "status": "pass | warning | fail",
+  "can_send": true or false,
+  "explanation": "one line reason",
+  "inferred_answer": "option label(s) or numeric answer if inferable, else empty",
+  "suggested_final_line": "final line to add if missing, else empty"
+}}"""
+
+
+
+            
 
         response = anthropic_client.messages.create(
             model="claude-sonnet-4-6",
