@@ -736,13 +736,42 @@ async function verifyQuestion(id) {
     const box = boxes.find(b => b.id === id);
 
     const resultDiv = document.getElementById(`verify-result-${id}`);
-    if (data.correct) {
-      resultDiv.innerHTML = `<div class="verify-result verify-ok">✓ Verified — ${data.explanation}</div>`;
-      if (box) box.verified = true;
-    } else {
-      resultDiv.innerHTML = `<div class="verify-result verify-fail">✗ Issue found — ${data.explanation}</div>`;
-      if (box) box.verified = false;
-    }
+    // if (data.correct) {
+    //   resultDiv.innerHTML = `<div class="verify-result verify-ok">✓ Verified — ${data.explanation}</div>`;
+    //   if (box) box.verified = true;
+    // } else {
+    //   resultDiv.innerHTML = `<div class="verify-result verify-fail">✗ Issue found — ${data.explanation}</div>`;
+    //   if (box) box.verified = false;
+    // }
+
+
+    const status = data.status || (data.correct ? "pass" : "fail");
+const canSend = data.can_send ?? data.correct === true;
+
+if (box) {
+  box.verification = {
+    status,
+    can_send: canSend,
+    explanation: data.explanation || "",
+    inferred_answer: data.inferred_answer || "",
+    suggested_final_line: data.suggested_final_line || ""
+  };
+}
+
+if (status === "pass") {
+  resultDiv.innerHTML = `<div class="verify-result verify-ok">✓ Verified — ${data.explanation}</div>`;
+  if (box) box.verified = true;
+
+} else if (status === "warning") {
+  resultDiv.innerHTML = `<div class="verify-result verify-ok">⚠️ Verified with warning — ${data.explanation}</div>`;
+  if (box) box.verified = true;
+
+} else {
+  resultDiv.innerHTML = `<div class="verify-result verify-fail">✗ Issue found — ${data.explanation}</div>`;
+  if (box) box.verified = false;
+}
+
+    
     renderResults();
     renderBoxes();
   } catch (e) {
